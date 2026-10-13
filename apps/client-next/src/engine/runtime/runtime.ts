@@ -902,14 +902,18 @@ export function startRuntime(
 				markStage( "ui" );
 				renderer.setDamageText( characters.damageText() );
 				// Hidden maintenance still acknowledges every ordered publication, but
-				// cannot display a frame. Avoid GPU preparation and visibility queries.
-				const rendered = visible ?
+				// cannot display a frame, so it skips GPU preparation. A pending world
+				// entry is the exception: scene admission happens only inside the
+				// renderer frame, and 0x3012 game-ready waits on it. The native client
+				// loads a teleport while minimized; a background tab must too.
+				const admitting = !readySent && sessionState?.phase === "world";
+				const rendered = visible || admitting ?
 					renderer.frame( platform.readViewport(), now / 1000, frameId, frameProbe() ) :
 					undefined;
 				if ( rendered ) {
 					await rendered;
 				}
-				waitMs = visible ? renderer.readbackWaitMs?.() ?? 0 : 0;
+				waitMs = visible || admitting ? renderer.readbackWaitMs?.() ?? 0 : 0;
 				if ( disposed ) return;
 				markStage( "render-preparation-submit" );
 				renderer.setTeleportGates( worldPresented ? presentation.entities() : [] );

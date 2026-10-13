@@ -166,3 +166,38 @@ jobs:
           GOOS: windows
           CGO_ENABLED: "0"
         run: go vet ./...
+
+  # The one check from this workflow a ruleset can require (a job skipped by
+  # `if:` satisfies a required check). It always runs and fails when a job
+  # failed, or was skipped although this pull request's files needed it.
+  gate-summary:
+    name: gate-summary (linux)
+    needs: [changes, client-source, server-policy, server-source]
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Every Linux gate this change needs passed
+        env:
+          CHANGES: ${{ needs.changes.result }}
+          CLIENT: ${{ needs.changes.outputs.client }}
+          SERVER: ${{ needs.changes.outputs.server }}
+          CLIENT_SOURCE: ${{ needs.client-source.result }}
+          SERVER_POLICY: ${{ needs.server-policy.result }}
+          SERVER_SOURCE: ${{ needs.server-source.result }}
+        run: |
+          [ "$CHANGES" = success ] || { echo "changes: $CHANGES"; exit 1; }
+          failed=0
+          # need NAME RESULT NEEDED: success passes, a skip passes only when
+          # the change did not need the job, anything else fails.
+          need() {
+            case "$2" in
+              success) echo "$1: success" ;;
+              skipped) if [ "$3" = true ]; then echo "$1 was skipped although this change needs it"; failed=1; else echo "$1: not needed"; fi ;;
+              *) echo "$1: $2"; failed=1 ;;
+            esac
+          }
+          need client-source "$CLIENT_SOURCE" "$CLIENT"
+          need server-policy "$SERVER_POLICY" "$SERVER"
+          need server-source "$SERVER_SOURCE" "$SERVER"
+          exit $failed

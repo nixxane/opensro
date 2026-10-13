@@ -74,5 +74,30 @@ jobs:
         run: git diff --exit-code HEAD -- pnpm-lock.yaml pnpm-workspace.yaml package.json ':(glob)apps/*/package.json'
       - run: pnpm check source-portable
 
+  # The one check a ruleset can require. A job skipped by `if:` satisfies a
+  # required check, so the ruleset names this summary instead: it always runs
+  # and fails when source-check failed, or was skipped although this pull
+  # request's files needed it.
+  gate-summary:
+    name: gate-summary (source-check)
+    needs: [changes, source-check]
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Every source gate this change needs passed
+        env:
+          CHANGES: ${{ needs.changes.result }}
+          PORTABLE: ${{ needs.changes.outputs.portable }}
+          SOURCE_CHECK: ${{ needs.source-check.result }}
+        run: |
+          [ "$CHANGES" = success ] || { echo "changes: $CHANGES"; exit 1; }
+          case "$SOURCE_CHECK" in
+            success) ;;
+            skipped) [ "$PORTABLE" != true ] || { echo "source-check was skipped although this change needs it"; exit 1; } ;;
+            *) echo "source-check: $SOURCE_CHECK"; exit 1 ;;
+          esac
+          echo "source-check: $SOURCE_CHECK (needed: $PORTABLE)"
+
   # The asset pipeline and asset-dependent suites consume a locally extracted,
   # licensed v1.150 client and are intentionally not run on hosted machines.

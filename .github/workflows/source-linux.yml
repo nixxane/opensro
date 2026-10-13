@@ -63,6 +63,43 @@ jobs:
       - name: Verify client without generated retail assets
         run: node apps/client-next/tools/check.mjs --source
 
+  # The repository source policies that cover server files too. source-check
+  # (check.yml) skips a server-only pull request, so without this job such a
+  # pull request ran none of them (#881 merged a file past the size limit).
+  # Each gate needs only Node and Python, no node_modules. A mixed pull
+  # request also runs them in source-check; this job does not depend on that
+  # workflow's file filter, at the cost of a minute.
+  server-policy:
+    needs: changes
+    if: needs.changes.outputs.server == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+      # One step per gate (the task runner takes one task), each run even
+      # after an earlier one fails so a pull request sees every problem.
+      - name: Source size
+        run: node scripts/task.mjs check:source-size
+      - name: Source encoding
+        if: ${{ !cancelled() }}
+        run: node scripts/task.mjs check:source-encoding
+      - name: Generated root
+        if: ${{ !cancelled() }}
+        run: node scripts/task.mjs check:generated-root
+      - name: Shared fixtures
+        if: ${{ !cancelled() }}
+        run: node scripts/task.mjs check:shared-fixtures
+      # ops/release's receivers and compatibility.json are server files; on
+      # Linux this also runs the POSIX-only tests Windows skips.
+      - name: Release
+        if: ${{ !cancelled() }}
+        run: node scripts/task.mjs check:release
+
   server-source:
     needs: changes
     if: needs.changes.outputs.server == 'true'

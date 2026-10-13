@@ -3,9 +3,10 @@
 # The committed lockfile owns both pnpm itself and application dependencies;
 # installation must not quietly repair either part before the source gates run.
 # The Go gate runs once, on Linux (source-linux.yml): this job runs every
-# other source gate, and only for a change outside the Go server - a pull
-# request that touches apps/server alone has nothing here to check. A push
-# to main always runs.
+# other source gate, and only for a change outside the Go server. A pull
+# request that touches apps/server alone gets the policies that cover server
+# files (size, encoding, generated root, shared fixtures, release) from
+# source-linux.yml's server-policy job instead. A push to main always runs.
 # ===========================================================================
 name: source-check
 

@@ -43,6 +43,7 @@ import {
 	continueRotation,
 	createStepCache
 } from "@/engine/foundation/animation/particle-presentation";
+import { catchUpWindow } from "@/engine/foundation/animation/particle-catchup";
 import { hypot3 } from "@/engine/foundation/math/hypot";
 
 /*
@@ -512,46 +513,6 @@ function tickHorizon( graph: readonly ParticleEmitter[] ): number {
 		for ( let b = 0; b < def.births.length; b++ ) last = Math.max( last, def.births[b]! + def.frames );
 	}
 	return last;
-}
-
-/*
-================
-catchUpWindow
-
-How many ticks a graph needs to reach steady state from nothing: the longest
-chain of parent lifetimes. An element alive at tick T was born within its own
-lifetime of T, and its parent within the parent's lifetime of that, so a replay
-begun this many ticks before T meets every element that is alive at T.
-================
-*/
-function catchUpWindow( graph: readonly ParticleEmitter[] ): number {
-	let window = 0;
-	// Walk each emitter up its parents: graphs are small and this allocates nothing.
-	for ( let n = 0; n < graph.length; n++ ) {
-		let chain = 0;
-		for ( let at = n; at >= 0 && at < graph.length; at = graph[at]!.parent ) chain += graph[at]!.frames;
-		window = Math.max( window, chain );
-	}
-	return window + 1;
-}
-
-/*
-================
-particleGraphStale
-
-True when advancing a history to `time` would replay more than a graph's
-steady-state window: only a graph that loops or emits can (tickHorizon).
-The caller restarts such a history instead of replaying minutes of ticks
-in one frame (a hidden tab, or an actor not drawn for a long while).
-================
-*/
-export function particleGraphStale(
-	history: ParticleGraphState,
-	graph: readonly ParticleEmitter[],
-	time: number
-): boolean {
-	return tickHorizon( graph ) === Infinity &&
-		Math.floor( time * TICKS_PER_SECOND + 1e-6 ) - history.frame > catchUpWindow( graph );
 }
 
 // ============================================================================

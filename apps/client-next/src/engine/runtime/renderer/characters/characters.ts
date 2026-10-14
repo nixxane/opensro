@@ -17,10 +17,10 @@ import { createModelMaterialClocks } from "@/engine/foundation/animation/model-m
 import {
 	createParticleGraph,
 	advanceParticleGraph,
-	particleGraphStale,
 	particleElementMatrix,
 	type ParticleGraphState
 } from "@/engine/foundation/animation/particle-graph";
+import { particleGraphStale } from "@/engine/foundation/animation/particle-catchup";
 import { bindNativeClip, type NativeClip } from "@/engine/foundation/animation/native-clip";
 import { HOLDER_FOLLOW, holderFollow } from "@/engine/foundation/animation/particle-holder-link";
 import { createActorSnapshots } from "./actor-snapshots";
@@ -1247,7 +1247,7 @@ export function createCharacters( random?: import("@/engine/contracts/presentati
 			!history || history.model !== actor.model || actor.time < history.time ||
 			history.cycle !== (frame.cycles.get( actor.gid ) ?? 0) ||
 			(history.graph && model.particleGraph &&
-				particleGraphStale( history.graph, model.particleGraph, actor.time ))
+				particleGraphStale( history.graph.frame, model.particleGraph, actor.time ))
 		) {
 			const graph = model.particleGraph ?
 				createParticleGraph( model.particleGraph, particleRandom.index ) :

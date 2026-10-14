@@ -16,9 +16,10 @@ import assert from "node:assert/strict";
 const load = async file => {
 	return import( sourceFileUrl( file ).href );
 };
-const { createParticleGraph, advanceParticleGraph, particleElementMatrix, particleGraphStale } = await load(
+const { createParticleGraph, advanceParticleGraph, particleElementMatrix } = await load(
 	"src/engine/foundation/animation/particle-graph.ts"
 );
+const { particleGraphStale } = await load( "src/engine/foundation/animation/particle-catchup.ts" );
 const { particleProgram } = await load( "src/engine/foundation/animation/particle-program.ts" );
 const identity = () => new Float32Array( [ 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1 ] );
 const table = new Float32Array( [ .25, .5, .75 ] );
@@ -415,9 +416,9 @@ test("the bounded replay lands on the state continuous stepping reaches", () => 
 test("only a looping or emitting graph can be stale, and only past its window", () => {
 	const looping = [ emitter( { loop: true } ) ], finite = [ emitter() ];
 	const state = createParticleGraph( looping, 0 );
-	assert.equal( particleGraphStale( state, looping, MINUTES_10 ), true );
+	assert.equal( particleGraphStale( state.frame, looping, MINUTES_10 ), true );
 	advanceParticleGraph( state, looping, MINUTES_10, identity(), table );
-	assert.equal( particleGraphStale( state, looping, MINUTES_10 + .25 ), false );
-	assert.equal( particleGraphStale( state, looping, MINUTES_10 * 2 ), true );
-	assert.equal( particleGraphStale( createParticleGraph( finite, 0 ), finite, MINUTES_10 ), false );
+	assert.equal( particleGraphStale( state.frame, looping, MINUTES_10 + .25 ), false );
+	assert.equal( particleGraphStale( state.frame, looping, MINUTES_10 * 2 ), true );
+	assert.equal( particleGraphStale( -1, finite, MINUTES_10 ), false );
 });

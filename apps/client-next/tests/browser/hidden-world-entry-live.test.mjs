@@ -6,8 +6,9 @@ hidden-world-entry-live.test.mjs - world entry completes in a background tab
 A world entry or teleport is finished only when the client sends 0x3012
 game-ready, and the server keeps the scene inert until then. Scene admission
 runs inside the renderer frame, so a tab hidden during the load must still
-admit the scene. The native client keeps loading while minimized (inferred,
-not traced). The tab is hidden by a real tab switch in a headed browser, never
+admit the scene. The native client keeps updating while inactive and finishes
+its loading screen in CPSMission_OnUpdate (728E10); only drawing stops
+(A11650). The tab is hidden by a real tab switch in a headed browser, never
 by spoofing visibilityState, because only a real hidden document stops
 animation frames.
 

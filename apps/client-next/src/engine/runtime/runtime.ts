@@ -905,7 +905,11 @@ export function startRuntime(
 				// cannot display a frame, so it skips GPU preparation. A pending world
 				// entry is the exception: scene admission happens only inside the
 				// renderer frame, and 0x3012 game-ready waits on it. The native client
-				// keeps loading while minimized (inferred, not traced); a background tab must too.
+				// keeps updating while inactive and only stops drawing: Application_PumpIdleFrame
+				// (A0F430) runs OnUpdate every idle frame, CGFXMainFrame_RenderFrame (A11650)
+				// sleeps 20 ms instead of drawing while g_bIsWindowActive is 0, and the loading
+				// screen finishes in CPSMission_OnUpdate (728E10, sends 0x324C). A background
+				// tab must finish its entry too.
 				const admitting = !readySent && sessionState?.phase === "world";
 				const rendered = visible || admitting ?
 					renderer.frame( platform.readViewport(), now / 1000, frameId, frameProbe() ) :

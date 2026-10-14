@@ -225,17 +225,18 @@ func TestGachaExchangeSwapsTheVoucherForItsRecordedReward(t *testing.T) {
 			if reason != "" {
 				t.Fatal(reason)
 			}
-			var gotReward bool
+			rewardSlot := int64(-1)
 			for _, row := range c.MissionInventory {
 				if rt.GachaCatalog.IsResultCard(row.RefObjID) {
 					t.Fatalf("voucher survived the exchange: %+v", row)
 				}
 				if row.RefObjID == tc.reward && row.StackCount == 1 {
-					gotReward = true
+					rewardSlot = row.Slot
 				}
 			}
-			if !gotReward {
-				t.Fatalf("reward %d missing: %+v", tc.reward, c.MissionInventory)
+			// The voucher's freed slot is the first free one, so the reward takes it.
+			if rewardSlot != 13 {
+				t.Fatalf("reward %d at slot %d, want the voucher's slot 13: %+v", tc.reward, rewardSlot, c.MissionInventory)
 			}
 			quantity := -1
 			for index, frame := range frames {
@@ -248,9 +249,13 @@ func TestGachaExchangeSwapsTheVoucherForItsRecordedReward(t *testing.T) {
 				if frame.Opcode == wire.OpItemMoveResponse && reflect.DeepEqual(frame.Payload, []byte{1, 15, 13, 0}) {
 					t.Fatal("voucher left by a row delete, which 7654B0 does not turn into the exchange notice")
 				}
+				// A frame writing slot 13 before the 0x3645 would let the client zero the reward.
+				if frame.Opcode == wire.OpItemMoveResponse && len(frame.Payload) > 2 && frame.Payload[2] == 13 && quantity < 0 {
+					t.Fatalf("frame %d writes slot 13 before the voucher's 0x3645: %+v", index, frames)
+				}
 			}
-			if quantity < 0 {
-				t.Fatalf("no 0x3645 for the voucher: %+v", frames)
+			if quantity != 0 {
+				t.Fatalf("the voucher's 0x3645 is frame %d, want first: %+v", quantity, frames)
 			}
 		})
 	}

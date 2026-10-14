@@ -398,12 +398,14 @@ func (rt *Runtime) HandleGachaExchange(
 			return false
 		}
 		character.MissionInventory = rows
-		// The native client wants the voucher's quantity update, not a row delete.
+		// The native client wants the voucher's quantity update, not a row delete,
+		// and first: the freed slot is the first free one, so the reward usually
+		// lands in it, and 7654B0 must still find the voucher there.
 		quantityFrame := wire.Frame{
 			Opcode:  gacha.OpItemStateDelta,
 			Payload: wire.NewWriter(4).U8(slot).U8(8).U16(0).Payload(),
 		}
-		frames = append([]wire.Frame{planned[0], quantityFrame}, planned[1:]...)
+		frames = append([]wire.Frame{quantityFrame}, planned...)
 		return true
 	})
 	if !committed {

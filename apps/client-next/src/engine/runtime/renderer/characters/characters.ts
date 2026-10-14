@@ -17,6 +17,7 @@ import { createModelMaterialClocks } from "@/engine/foundation/animation/model-m
 import {
 	createParticleGraph,
 	advanceParticleGraph,
+	particleGraphStale,
 	particleElementMatrix,
 	type ParticleGraphState
 } from "@/engine/foundation/animation/particle-graph";
@@ -1244,7 +1245,9 @@ export function createCharacters( random?: import("@/engine/contracts/presentati
 		let history = particleBirths.get( actor.gid );
 		if (
 			!history || history.model !== actor.model || actor.time < history.time ||
-			history.cycle !== (frame.cycles.get( actor.gid ) ?? 0)
+			history.cycle !== (frame.cycles.get( actor.gid ) ?? 0) ||
+			(history.graph && model.particleGraph &&
+				particleGraphStale( history.graph, model.particleGraph, actor.time ))
 		) {
 			const graph = model.particleGraph ?
 				createParticleGraph( model.particleGraph, particleRandom.index ) :

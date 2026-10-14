@@ -514,6 +514,46 @@ function tickHorizon( graph: readonly ParticleEmitter[] ): number {
 	return last;
 }
 
+/*
+================
+catchUpWindow
+
+How many ticks a graph needs to reach steady state from nothing: the longest
+chain of parent lifetimes. An element alive at tick T was born within its own
+lifetime of T, and its parent within the parent's lifetime of that, so a replay
+begun this many ticks before T meets every element that is alive at T.
+================
+*/
+function catchUpWindow( graph: readonly ParticleEmitter[] ): number {
+	let window = 0;
+	// Walk each emitter up its parents: graphs are small and this allocates nothing.
+	for ( let n = 0; n < graph.length; n++ ) {
+		let chain = 0;
+		for ( let at = n; at >= 0 && at < graph.length; at = graph[at]!.parent ) chain += graph[at]!.frames;
+		window = Math.max( window, chain );
+	}
+	return window + 1;
+}
+
+/*
+================
+particleGraphStale
+
+True when advancing a history to `time` would replay more than a graph's
+steady-state window: only a graph that loops or emits can (tickHorizon).
+The caller restarts such a history instead of replaying minutes of ticks
+in one frame (a hidden tab, or an actor not drawn for a long while).
+================
+*/
+export function particleGraphStale(
+	history: ParticleGraphState,
+	graph: readonly ParticleEmitter[],
+	time: number
+): boolean {
+	return tickHorizon( graph ) === Infinity &&
+		Math.floor( time * TICKS_PER_SECOND + 1e-6 ) - history.frame > catchUpWindow( graph );
+}
+
 // ============================================================================
 
 /*
@@ -580,8 +620,16 @@ export function advanceParticleGraph(
 	shiftZ = 0,
 	keepRoots = false
 ): void {
-	const target = Math.min( Math.floor( time * TICKS_PER_SECOND + 1e-6 ), tickHorizon( graph ) );
+	const horizon = tickHorizon( graph );
+	const target = Math.min( Math.floor( time * TICKS_PER_SECOND + 1e-6 ), horizon );
 	if ( target < history.frame || !Number.isSafeInteger( target ) ) throw Error( "Invalid particle graph time" );
+	// A new history for an actor whose clock is minutes old: replaying from
+	// tick 0 froze the frame for seconds. A looping graph repeats and an
+	// emitting one reaches steady state, so begin one window before the target.
+	const first = history.frame < 0 && horizon === Infinity ?
+		Math.max( 0, target - catchUpWindow( graph ) ) :
+		history.frame + 1;
+	const skipped = first > history.frame + 1;
 	const scratch = history.scratch, elements = history.elements;
 	// Only a region crossing shifts the origin. Every other call walked every
 	// retained element slot to add zero: a skill trace showed it as the
@@ -619,11 +667,11 @@ export function advanceParticleGraph(
 	root.matrix[12] = root.matrix[13] = root.matrix[14] = 0;
 	inverseInto( scratch.previous, scratch.inverse );
 	multiply( root.matrix, scratch.inverse, root.delta );
-	for ( let tick = history.frame + 1; tick <= target; tick++ ) {
+	for ( let tick = first; tick <= target; tick++ ) {
 		if ( history.frame < 0 ) copy3( transform.subarray( 12, 15 ), root.origin );
 		else copy3( oldRoot, root.origin );
 		copy3( transform.subarray( 12, 15 ), root.state.position );
-		if ( tick > history.frame + 1 ) {
+		if ( tick > first ) {
 			copy3( root.state.position, root.origin );
 			setIdentity( root.delta );
 		}
@@ -713,6 +761,11 @@ export function advanceParticleGraph(
 					existing = rows[b],
 					age = existing ? existing.age : def.loop && elapsed >= 0 ? elapsed % def.frames : elapsed;
 				if ( age < 0 || (!existing && birth / TICKS_PER_SECOND >= stop) ) continue;
+				// A birth before the window began has run its course by the
+				// target unless it cycles; the replay never saw it.
+				if ( skipped && !existing && !def.loop && !(keepRoots && def.parent < 0) && age >= def.frames ) {
+					continue;
+				}
 				const parent = def.emission ?
 					history.parents[n]![b] :
 					def.parent < 0 ?

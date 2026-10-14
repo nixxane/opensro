@@ -16,7 +16,7 @@ import assert from "node:assert/strict";
 const load = async file => {
 	return import( sourceFileUrl( file ).href );
 };
-const { createParticleGraph, advanceParticleGraph, particleElementMatrix } = await load(
+const { createParticleGraph, advanceParticleGraph, particleElementMatrix, particleGraphStale } = await load(
 	"src/engine/foundation/animation/particle-graph.ts"
 );
 const { particleProgram } = await load( "src/engine/foundation/animation/particle-program.ts" );
@@ -378,4 +378,46 @@ test("a holder turn between ticks reaches the elements linked to it on the next 
 	advanceParticleGraph( state, graph, .05, level, table );
 	const z = Array.from( state.elements[0][0].matrix.subarray( 8, 11 ), v => Math.round( v * 1e6 ) / 1e6 + 0 );
 	assert.deepEqual( z, [ 1, 0, 0 ] );
+});
+// A looping effect on an actor whose clock is ten minutes old must not replay
+// every tick since the clock started: that froze the frame for seconds.
+const MINUTES_10 = 600;
+function countingLoop() {
+	const reads = { frames: 0 };
+	const def = emitter( { loop: true } );
+	Object.defineProperty( def, "frames", {
+		get() {
+			reads.frames++;
+			return 10;
+		}
+	} );
+	return { graph: [ def ], reads };
+}
+test("a fresh looping graph on an old clock starts its replay a window before the target", () => {
+	const { graph, reads } = countingLoop();
+	const state = createParticleGraph( graph, 0 );
+	advanceParticleGraph( state, graph, MINUTES_10, identity(), table );
+	// Ten minutes is 12000 ticks; a bounded replay reads the lifetime a few
+	// times per tick of its window, not per tick of the clock.
+	assert.ok( reads.frames < 1000, "lifetime reads: " + reads.frames );
+	assert.equal( state.frame, MINUTES_10 * 20 );
+});
+test("the bounded replay lands on the state continuous stepping reaches", () => {
+	const { graph } = countingLoop();
+	const fresh = createParticleGraph( graph, 0 ), stepped = createParticleGraph( graph, 0 );
+	advanceParticleGraph( fresh, graph, 30.35, identity(), table );
+	for ( let second = 0; second <= 30; second++ ) advanceParticleGraph( stepped, graph, second, identity(), table );
+	advanceParticleGraph( stepped, graph, 30.35, identity(), table );
+	assert.equal( fresh.elements[0][0].alive, true );
+	assert.equal( fresh.elements[0][0].age, stepped.elements[0][0].age );
+	assert.equal( fresh.elements[0][0].state.frame, stepped.elements[0][0].state.frame );
+});
+test("only a looping or emitting graph can be stale, and only past its window", () => {
+	const looping = [ emitter( { loop: true } ) ], finite = [ emitter() ];
+	const state = createParticleGraph( looping, 0 );
+	assert.equal( particleGraphStale( state, looping, MINUTES_10 ), true );
+	advanceParticleGraph( state, looping, MINUTES_10, identity(), table );
+	assert.equal( particleGraphStale( state, looping, MINUTES_10 + .25 ), false );
+	assert.equal( particleGraphStale( state, looping, MINUTES_10 * 2 ), true );
+	assert.equal( particleGraphStale( createParticleGraph( finite, 0 ), finite, MINUTES_10 ), false );
 });

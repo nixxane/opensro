@@ -306,6 +306,15 @@ variable "elixir_drops_off" {
   default = "on"
 }
 
+# alchemy_material_drops_off keeps every alchemy material (type 3/3/11/4,
+# the grey bags of monster parts) out of monster drops (port-only, not
+# native, beta balance; owner 2026-10-14). "off" is the original game's
+# drops.
+variable "alchemy_material_drops_off" {
+  type    = string
+  default = "on"
+}
+
 variable "beta_drop_cap" {
   type    = string
   default = "16"
@@ -343,13 +352,15 @@ variable "beta_seal_rates" {
 # stack_sizes raises item stack caps per group (port-only, not native), e.g.
 # "potion=2000,elixir=50". Groups: potion, petpotion, universalpill, elixir,
 # luckypowder, magicstone, attrstone (stones merge only with an equal
-# assimilation value).
-# The deployment default raises Lucky Powder to 500 (owner, 2026-10-13).
+# assimilation value), arrow, bolt.
+# The deployment default raises Lucky Powder to 500 (owner, 2026-10-13) and
+# arrows and bolts to 2500 (owner, 2026-10-14).
 # Empty or "off" keeps every itemdata cap; an unknown group or a cap outside
-# 1..65535 stops GameWorld at boot.
+# 1..65535 stops GameWorld at boot, so a host's own stack_sizes may name a
+# group only once a release that knows it is live.
 variable "stack_sizes" {
   type    = string
-  default = "luckypowder=500"
+  default = "arrow=2500,bolt=2500,luckypowder=500"
 }
 
 # The community site's public read API listener (internal/agent/publicstats):
@@ -520,6 +531,7 @@ job "sro-gameworld-__SHARD_ID__" {
         SRO_ALCHEMY_NO_ASSIMILATION        = var.alchemy_no_assimilation
         SRO_CARAVAN_BANDIT_CAP             = var.caravan_bandit_cap
         SRO_ELIXIR_DROPS_OFF               = var.elixir_drops_off
+        SRO_ALCHEMY_MATERIAL_DROPS_OFF     = var.alchemy_material_drops_off
         SRO_BETA_SHOP_ONLY_DEGREE9         = var.beta_shop_only_degree9
         SRO_STACK_SIZES                    = var.stack_sizes
         SRO_PUBLIC_API_ADDR                = var.public_api_addr

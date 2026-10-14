@@ -905,7 +905,7 @@ export function startRuntime(
 				// cannot display a frame, so it skips GPU preparation. A pending world
 				// entry is the exception: scene admission happens only inside the
 				// renderer frame, and 0x3012 game-ready waits on it. The native client
-				// loads a teleport while minimized; a background tab must too.
+				// keeps loading while minimized (inferred, not traced); a background tab must too.
 				const admitting = !readySent && sessionState?.phase === "world";
 				const rendered = visible || admitting ?
 					renderer.frame( platform.readViewport(), now / 1000, frameId, frameProbe() ) :

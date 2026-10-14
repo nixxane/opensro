@@ -111,6 +111,11 @@ func TestGachaAdmissionFailuresPreserveTicket(t *testing.T) {
 				p[8] = 1
 			case "ticket":
 				c.MissionInventory[0].RefObjID = 999
+			case "unlisted pair":
+				// Resolvable and in range, but no prize row names it: a pair no roll writes.
+				c.MissionInventory[0].MagicOptions = []uint64{uint64(rt.GachaCatalog.Card.RefObjID), 1}
+			case "stacked":
+				c.MissionInventory[0].StackCount = 2
 			case "delete pending":
 				c.DeletePending = true
 			case "truncated":
@@ -269,8 +274,42 @@ func TestGachaExchangeTakesTheLowestSlotVoucherFirst(t *testing.T) {
 	t.Fatalf("slot 13's win reward was not granted first: %+v", c.MissionInventory)
 }
 
+func TestGachaExchangeConsumesTheVoucherItRead(t *testing.T) {
+	rt, c, p := operatorFixture(t, 0)
+	// The paid voucher sits at slot 20; a same-codename card without a pair
+	// (an operator grant, say) sits below it at slot 13.
+	c.MissionInventory[0].Slot = 20
+	blank := c.MissionInventory[0]
+	blank.Slot = 13
+	blank.MagicOptions = nil
+	c.MissionInventory = append(c.MissionInventory, blank)
+	if _, reason := rt.HandleGachaExchange(testDivision, c, p); reason != "" {
+		t.Fatal(reason)
+	}
+	rewards := 0
+	var blankKept, voucherKept bool
+	for _, row := range c.MissionInventory {
+		switch {
+		case row.RefObjID == 11459:
+			rewards += int(row.StackCount)
+		case row.Slot == 13 && row.RefObjID == blank.RefObjID && len(row.MagicOptions) == 0:
+			blankKept = true
+		case row.Slot == 20 && rt.GachaCatalog.IsResultCard(row.RefObjID):
+			voucherKept = true
+		}
+	}
+	if rewards != 1 || !blankKept || voucherKept {
+		t.Fatalf("rewards=%d blank kept=%v voucher kept=%v: %+v", rewards, blankKept, voucherKept, c.MissionInventory)
+	}
+	before := c.Snapshot()
+	if frames, reason := rt.HandleGachaExchange(testDivision, c, p); reason == "" || len(frames) != 0 ||
+		!reflect.DeepEqual(c.Snapshot(), before) {
+		t.Fatal("the blank card paid out the voucher's reward a second time")
+	}
+}
+
 func TestGachaExchangeRefusalsPreserveTheVoucher(t *testing.T) {
-	for _, kind := range []string{"selection", "machine", "outside scope", "no voucher", "bad pair", "delete pending", "truncated", "trailing", "catalog"} {
+	for _, kind := range []string{"selection", "machine", "outside scope", "no voucher", "bad pair", "unlisted pair", "stacked", "delete pending", "truncated", "trailing", "catalog"} {
 		t.Run(kind, func(t *testing.T) {
 			rt, c, p := operatorFixture(t, 0)
 			switch kind {
@@ -285,6 +324,11 @@ func TestGachaExchangeRefusalsPreserveTheVoucher(t *testing.T) {
 				c.MissionInventory = nil
 			case "bad pair":
 				c.MissionInventory[0].MagicOptions = []uint64{11459, 0}
+			case "unlisted pair":
+				// Resolvable and in range, but no prize row names it: a pair no roll writes.
+				c.MissionInventory[0].MagicOptions = []uint64{uint64(rt.GachaCatalog.Card.RefObjID), 1}
+			case "stacked":
+				c.MissionInventory[0].StackCount = 2
 			case "delete pending":
 				c.DeletePending = true
 			case "truncated":

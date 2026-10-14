@@ -191,3 +191,126 @@ func TestGachaFailedWasteDrawPreservesTicket(t *testing.T) {
 		}
 	}
 }
+
+// operatorFixture is the roll fixture with Gori beside the machine and a voucher in the bag.
+func operatorFixture(t *testing.T, roll uint32) (*Runtime, *enterworld.Character, []byte) {
+	t.Helper()
+	rt, c, p := gachaFixture(t)
+	rt.GachaRoll = func() (uint32, error) { return roll, nil }
+	if _, reason := rt.HandleGachaRoll(testDivision, c, p); reason != "" {
+		t.Fatal(reason)
+	}
+	rt.NpcRoster = append(rt.NpcRoster, simulation.NpcDef{
+		ObjectID: 18, RefObjID: 9252, Codename: gachaOperatorCodename, AuthoredSpawn: true,
+		Spawn: simulation.SeedWorldState(c).Spawn,
+	})
+	rt.Selected.Set(testDivision, c.Name, 18)
+	return rt, c, wire.NewWriter(4).U32(18).Payload()
+}
+
+func TestGachaExchangeSwapsTheVoucherForItsRecordedReward(t *testing.T) {
+	for _, tc := range []struct {
+		name   string
+		roll   uint32
+		reward uint32
+	}{{"win", 0, 11459}, {"loss", 9999, 11460}} {
+		t.Run(tc.name, func(t *testing.T) {
+			rt, c, p := operatorFixture(t, tc.roll)
+			frames, reason := rt.HandleGachaExchange(testDivision, c, p)
+			if reason != "" {
+				t.Fatal(reason)
+			}
+			var gotReward bool
+			for _, row := range c.MissionInventory {
+				if rt.GachaCatalog.IsResultCard(row.RefObjID) {
+					t.Fatalf("voucher survived the exchange: %+v", row)
+				}
+				if row.RefObjID == tc.reward && row.StackCount == 1 {
+					gotReward = true
+				}
+			}
+			if !gotReward {
+				t.Fatalf("reward %d missing: %+v", tc.reward, c.MissionInventory)
+			}
+			quantity := -1
+			for index, frame := range frames {
+				if frame.Opcode == 0x3645 {
+					quantity = index
+					if !reflect.DeepEqual(frame.Payload, []byte{13, 8, 0, 0}) {
+						t.Fatalf("voucher update %v", frame.Payload)
+					}
+				}
+				if frame.Opcode == wire.OpItemMoveResponse && reflect.DeepEqual(frame.Payload, []byte{1, 15, 13, 0}) {
+					t.Fatal("voucher left by a row delete, which 7654B0 does not turn into the exchange notice")
+				}
+			}
+			if quantity < 0 {
+				t.Fatalf("no 0x3645 for the voucher: %+v", frames)
+			}
+		})
+	}
+}
+
+func TestGachaExchangeTakesTheLowestSlotVoucherFirst(t *testing.T) {
+	rt, c, p := operatorFixture(t, 0)
+	extra := c.MissionInventory[0]
+	extra.Slot = 20
+	extra.MagicOptions = []uint64{11460, 1}
+	extra.RefObjID, extra.Codename = rt.GachaCatalog.LoseCard.RefObjID, rt.GachaCatalog.LoseCard.Codename
+	c.MissionInventory = append(c.MissionInventory, extra)
+	if _, reason := rt.HandleGachaExchange(testDivision, c, p); reason != "" {
+		t.Fatal(reason)
+	}
+	for _, row := range c.MissionInventory {
+		if row.RefObjID == 11459 {
+			return
+		}
+	}
+	t.Fatalf("slot 13's win reward was not granted first: %+v", c.MissionInventory)
+}
+
+func TestGachaExchangeRefusalsPreserveTheVoucher(t *testing.T) {
+	for _, kind := range []string{"selection", "machine", "outside scope", "no voucher", "bad pair", "delete pending", "truncated", "trailing", "catalog"} {
+		t.Run(kind, func(t *testing.T) {
+			rt, c, p := operatorFixture(t, 0)
+			switch kind {
+			case "selection":
+				rt.Selected.Set(testDivision, c.Name, 17)
+			case "machine":
+				rt.Selected.Set(testDivision, c.Name, 17)
+				p = wire.NewWriter(4).U32(17).Payload()
+			case "outside scope":
+				rt.NpcRoster[1].Spawn.RegionID = 0
+			case "no voucher":
+				c.MissionInventory = nil
+			case "bad pair":
+				c.MissionInventory[0].MagicOptions = []uint64{11459, 0}
+			case "delete pending":
+				c.DeletePending = true
+			case "truncated":
+				p = p[:3]
+			case "trailing":
+				p = append(p, 0)
+			case "catalog":
+				rt.GachaCatalog = nil
+			}
+			before := c.Snapshot()
+			frames, reason := rt.HandleGachaExchange(testDivision, c, p)
+			if reason == "" || !reflect.DeepEqual(c.Snapshot(), before) {
+				t.Fatalf("refusal changed state: %q %+v", reason, frames)
+			}
+		})
+	}
+}
+
+func TestGachaExchangeReplayFindsNoVoucher(t *testing.T) {
+	rt, c, p := operatorFixture(t, 0)
+	if _, reason := rt.HandleGachaExchange(testDivision, c, p); reason != "" {
+		t.Fatal(reason)
+	}
+	before := c.Snapshot()
+	if frames, reason := rt.HandleGachaExchange(testDivision, c, p); reason == "" || len(frames) != 0 ||
+		!reflect.DeepEqual(c.Snapshot(), before) {
+		t.Fatal("replay granted a second reward")
+	}
+}

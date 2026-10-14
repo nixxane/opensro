@@ -343,3 +343,9 @@ func (c *Catalog) WastePrizeForNpc(npc uint32, sample uint32) (Prize, bool) {
 	}
 	return Prize{}, false
 }
+
+// IsResultCard reports whether the reference is a win or loss voucher, the two
+// rows the roll writes and the operator exchanges.
+func (c *Catalog) IsResultCard(refObjID uint32) bool {
+	return refObjID == c.WinCard.RefObjID || refObjID == c.LoseCard.RefObjID
+}

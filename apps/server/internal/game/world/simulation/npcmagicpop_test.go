@@ -27,20 +27,26 @@ licensed data set.
 func TestAppendMagicPopMachinesPlacesOnePerTown(t *testing.T) {
 	refs := map[uint32]npcWorldRef{9251: {
 		refObjID: 9251, tidWord: 0x0146, codename: magicPopMachineCodename, scale: 1,
+	}, 9252: {
+		refObjID: 9252, tidWord: 0x0146, codename: magicPopOperatorCodename, scale: 1,
 	}}
 	roster := appendMagicPopMachines(nil, refs, worldNpcLookups{})
-	if len(roster) != len(magicPopPlacements) {
-		t.Fatalf("appended %d machines, want %d", len(roster), len(magicPopPlacements))
+	if len(roster) != len(magicPopPlacements)+len(magicPopOperatorPlacements) {
+		t.Fatalf("appended %d NPCs, want %d", len(roster), len(magicPopPlacements)+len(magicPopOperatorPlacements))
 	}
 	if err := ValidateNpcRoster(roster); err != nil {
 		t.Fatal(err)
 	}
 	for index, npc := range roster {
-		if npc.Spawn.RegionID != magicPopPlacements[index].RegionID {
-			t.Fatalf("machine %d region = %d", index, npc.Spawn.RegionID)
+		placements, want := magicPopPlacements[:], NpcTalkFlagGachaMachine
+		if npc.Codename == magicPopOperatorCodename {
+			placements, want, index = magicPopOperatorPlacements[:], NpcTalkFlagGachaOperator, index-len(magicPopPlacements)
 		}
-		if npc.TalkFlags&NpcTalkFlagGachaMachine == 0 {
-			t.Fatalf("machine %d lacks the Magic Pop talk row", index)
+		if npc.Spawn.RegionID != placements[index].RegionID {
+			t.Fatalf("%s %d region = %d", npc.Codename, index, npc.Spawn.RegionID)
+		}
+		if npc.TalkFlags != want {
+			t.Fatalf("NPC %d talk flags %#x, want %#x", index, npc.TalkFlags, want)
 		}
 		if _, found := npcPlacementHeading(npc.Codename, npc.Spawn.RegionID, npc.Spawn.X, npc.Spawn.Y, npc.Spawn.Z); !found {
 			t.Fatalf("machine %d has no recovered facing", index)
@@ -71,8 +77,16 @@ npcpos identities below it are untouched.
 func TestShippedWorldHasMagicPopMachines(t *testing.T) {
 	licensed.RequireGameData(t)
 	roster := LoadNpcWorldRoster(gamedatatest.TextdataDir(t))
-	regions := map[uint16]bool{}
+	regions, operators := map[uint16]bool{}, map[uint16]bool{}
 	for _, npc := range roster {
+		if npc.Codename == magicPopOperatorCodename {
+			if npc.ObjectID < magicPopOperatorGIDBase || npc.ObjectID >= domain.GroundItemGIDBase ||
+				npc.TalkFlags&NpcTalkFlagGachaOperator == 0 || npc.ModelPath == "" {
+				t.Fatalf("operator %d: talk flags %#x model %q", npc.ObjectID, npc.TalkFlags, npc.ModelPath)
+			}
+			operators[npc.Spawn.RegionID] = true
+			continue
+		}
 		if npc.Codename != magicPopMachineCodename {
 			if npc.ObjectID >= magicPopGIDBase {
 				t.Fatalf("%s id %d intrudes on the machine band", npc.Codename, npc.ObjectID)
@@ -90,6 +104,11 @@ func TestShippedWorldHasMagicPopMachines(t *testing.T) {
 	for _, spawn := range magicPopPlacements {
 		if !regions[spawn.RegionID] {
 			t.Fatalf("no machine in region %d", spawn.RegionID)
+		}
+	}
+	for _, spawn := range magicPopOperatorPlacements {
+		if !operators[spawn.RegionID] {
+			t.Fatalf("no operator in region %d", spawn.RegionID)
 		}
 	}
 }

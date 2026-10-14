@@ -43,7 +43,6 @@ import {
 	continueRotation,
 	createStepCache
 } from "@/engine/foundation/animation/particle-presentation";
-import { catchUpWindow } from "@/engine/foundation/animation/particle-catchup";
 import { hypot3 } from "@/engine/foundation/math/hypot";
 
 /*
@@ -581,16 +580,8 @@ export function advanceParticleGraph(
 	shiftZ = 0,
 	keepRoots = false
 ): void {
-	const horizon = tickHorizon( graph );
-	const target = Math.min( Math.floor( time * TICKS_PER_SECOND + 1e-6 ), horizon );
+	const target = Math.min( Math.floor( time * TICKS_PER_SECOND + 1e-6 ), tickHorizon( graph ) );
 	if ( target < history.frame || !Number.isSafeInteger( target ) ) throw Error( "Invalid particle graph time" );
-	// A new history for an actor whose clock is minutes old: replaying from
-	// tick 0 froze the frame for seconds. A looping graph repeats and an
-	// emitting one reaches steady state, so begin one window before the target.
-	const first = history.frame < 0 && horizon === Infinity ?
-		Math.max( 0, target - catchUpWindow( graph ) ) :
-		history.frame + 1;
-	const skipped = first > history.frame + 1;
 	const scratch = history.scratch, elements = history.elements;
 	// Only a region crossing shifts the origin. Every other call walked every
 	// retained element slot to add zero: a skill trace showed it as the
@@ -628,11 +619,11 @@ export function advanceParticleGraph(
 	root.matrix[12] = root.matrix[13] = root.matrix[14] = 0;
 	inverseInto( scratch.previous, scratch.inverse );
 	multiply( root.matrix, scratch.inverse, root.delta );
-	for ( let tick = first; tick <= target; tick++ ) {
+	for ( let tick = history.frame + 1; tick <= target; tick++ ) {
 		if ( history.frame < 0 ) copy3( transform.subarray( 12, 15 ), root.origin );
 		else copy3( oldRoot, root.origin );
 		copy3( transform.subarray( 12, 15 ), root.state.position );
-		if ( tick > first ) {
+		if ( tick > history.frame + 1 ) {
 			copy3( root.state.position, root.origin );
 			setIdentity( root.delta );
 		}
@@ -722,11 +713,6 @@ export function advanceParticleGraph(
 					existing = rows[b],
 					age = existing ? existing.age : def.loop && elapsed >= 0 ? elapsed % def.frames : elapsed;
 				if ( age < 0 || (!existing && birth / TICKS_PER_SECOND >= stop) ) continue;
-				// A birth before the window began has run its course by the
-				// target unless it cycles; the replay never saw it.
-				if ( skipped && !existing && !def.loop && !(keepRoots && def.parent < 0) && age >= def.frames ) {
-					continue;
-				}
 				const parent = def.emission ?
 					history.parents[n]![b] :
 					def.parent < 0 ?

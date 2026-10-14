@@ -37,7 +37,11 @@ const OFF = Object.freeze( {
 	smoothCamera: false,
 	enchantSparks: false,
 	// On by default (owner 2026-10-14); it changes only devices without BC.
-	compressedTextures: true
+	compressedTextures: true,
+	// On by default (owner 2026-10-14): near effects outrank far characters.
+	sharedActorRoom: true,
+	// On by default (owner 2026-10-15): a disabled tab is dimmed.
+	greyDisabledTabs: true
 } );
 
 test("only an explicit boolean enables chat timestamps", () => {
@@ -116,7 +120,9 @@ test("every video stage defaults off and only an explicit true enables it", () =
 		sunShadow: false,
 		perPixelLighting: false,
 		smoothCamera: false,
-		enchantSparks: false
+		enchantSparks: false,
+		// The shared actor room is on by default (owner 2026-10-14).
+		sharedActorRoom: true
 	} );
 	for (
 		const key of [
@@ -326,4 +332,22 @@ test("compressed textures are on unless explicitly false, and the stored reader 
 	assert.equal( storedExperimentalOptions( { getItem: () => null } ).options.compressedTextures, true );
 	assert.equal( storedExperimentalOptions( undefined ).options.compressedTextures, true );
 	assert.throws( () => storedExperimentalOptions( { getItem: () => "{" } ) );
+});
+
+test("the shared actor room is on unless explicitly false, and reaches the renderer's video options", () => {
+	for ( const value of [ undefined, null, {}, { sharedActorRoom: 1 }, { sharedActorRoom: "false" } ] ) {
+		assert.equal( experimentalOptions( value ).sharedActorRoom, true );
+	}
+	const off = experimentalOptions( { sharedActorRoom: false } );
+	assert.equal( off.sharedActorRoom, false );
+	assert.equal( experimentalVideo( off ).sharedActorRoom, false );
+	assert.equal( experimentalVideo( experimentalOptions( {} ) ).sharedActorRoom, true );
+});
+
+test("grey disabled tabs is on unless explicitly false and stays out of the renderer's video options", () => {
+	for ( const value of [ undefined, null, {}, { greyDisabledTabs: 1 }, { greyDisabledTabs: "false" } ] ) {
+		assert.equal( experimentalOptions( value ).greyDisabledTabs, true );
+	}
+	assert.equal( experimentalOptions( { greyDisabledTabs: false } ).greyDisabledTabs, false );
+	assert.equal( "greyDisabledTabs" in experimentalVideo( experimentalOptions( {} ) ), false );
 });

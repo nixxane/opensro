@@ -105,6 +105,12 @@ export const EXPERIMENTAL_TABS: readonly {
 				id: "experimental-compressed-textures",
 				label: "Compressed textures",
 				description: "Phones and tablets: less memory. After reload."
+			},
+			{
+				key: "sharedActorRoom",
+				id: "experimental-shared-actor-room",
+				label: "Effects in crowds",
+				description: "In a crowd, near skill effects draw before far characters."
 			}
 		]
 	},
@@ -150,6 +156,11 @@ export const EXPERIMENTAL_TABS: readonly {
 			id: "experimental-smooth-camera",
 			label: "Smooth camera",
 			description: "Ease small camera height jumps and the return after a wall."
+		}, {
+			key: "greyDisabledTabs",
+			id: "experimental-grey-disabled-tabs",
+			label: "Grey disabled tabs",
+			description: "Dim a window tab you cannot use."
 		} ]
 	},
 	{

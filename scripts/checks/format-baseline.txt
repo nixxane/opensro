@@ -18,7 +18,6 @@ apps/client-next/src/engine/foundation/animation/animation-timelines.ts
 apps/client-next/src/engine/foundation/animation/avatar-override.ts
 apps/client-next/src/engine/foundation/animation/body-shape.ts
 apps/client-next/src/engine/foundation/animation/bsr-particle-transform.ts
-apps/client-next/src/engine/foundation/animation/character-selection.ts
 apps/client-next/src/engine/foundation/animation/combat-stance.ts
 apps/client-next/src/engine/foundation/animation/damage-anchor.ts
 apps/client-next/src/engine/foundation/animation/disappear.ts
@@ -368,7 +367,6 @@ apps/server-observatory/public/item-model.js
 apps/server-observatory/public/items.js
 apps/server-observatory/public/model.js
 apps/server-observatory/server/source.mjs
-apps/server-observatory/tests/items.test.mjs
 apps/server-observatory/tests/model.test.mjs
 apps/server-observatory/tests/operations.test.mjs
 apps/server-observatory/tests/security.test.mjs

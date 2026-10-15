@@ -215,9 +215,16 @@ func TestMallExtraGoodsCap110ListsTheImportedSet(t *testing.T) {
 		if !ok {
 			t.Fatalf("%s not listed", good.Package)
 		}
-		if offer.Silk == 0 || offer.PackageID == 0 || len(offer.Scraps) == 0 || offer.Icon == "" {
-			t.Errorf("%s = silk %d, package %d, %d scraps, icon %q", good.Package, offer.Silk, offer.PackageID,
-				len(offer.Scraps), offer.Icon)
+		want := uint32(130)
+		switch {
+		case strings.HasSuffix(good.Package, "_ATTACH"):
+			want = 15
+		case strings.Contains(good.Package, "_HAT"):
+			want = 30
+		}
+		if offer.Silk != want || offer.PackageID == 0 || len(offer.Scraps) == 0 || offer.Icon == "" {
+			t.Errorf("%s = silk %d (want %d), package %d, %d scraps, icon %q", good.Package, offer.Silk, want,
+				offer.PackageID, len(offer.Scraps), offer.Icon)
 		}
 	}
 }

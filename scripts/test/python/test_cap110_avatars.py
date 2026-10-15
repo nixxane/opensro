@@ -58,5 +58,20 @@ class RecordTests(unittest.TestCase):
 		self.assertEqual(importer.records(importer.read_text(data)), rows)
 
 
+# ================
+# PriceTests
+# ================
+class PriceTests(unittest.TestCase):
+	# ================
+	# test_follows_the_v1150_outfit_tiers
+	# ================
+	def test_follows_the_v1150_outfit_tiers(self):
+		self.assertEqual(importer.silk_price("PACKAGE_ITEM_MALL_AVATAR_M_PIRATECREW"), "130")
+		self.assertEqual(importer.silk_price("PACKAGE_ITEM_MALL_AVATAR_W_PIRATECREW_2"), "130")
+		self.assertEqual(importer.silk_price("PACKAGE_ITEM_MALL_AVATAR_M_PIRATECREW_HAT"), "30")
+		self.assertEqual(importer.silk_price("PACKAGE_ITEM_MALL_AVATAR_W_PIRATECREW_HAT_2"), "30")
+		self.assertEqual(importer.silk_price("PACKAGE_ITEM_MALL_AVATAR_M_PIRATECREW_ATTACH"), "15")
+
+
 if __name__ == "__main__":
 	unittest.main()

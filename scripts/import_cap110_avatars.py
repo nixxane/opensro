@@ -16,7 +16,8 @@ imports whole sets, for example `piratecrew`, from that client:
 	                   and scraps                     refpricepolicyofitem.txt,
 	                                                  refscrapofpackageitem.txt
 
-The packages keep the donor's authored silk prices. They are only listed in the
+The packages take the v1.150 outfit prices (dress 130, hat 30, attachment 15
+silk), not the donor's. They are only listed in the
 mall when the server runs with SRO_MALL_EXTRA_GOODS=on,cap110.
 
 The donor's item IDs are kept. They must be unused in the extraction (v1.150
@@ -56,6 +57,10 @@ LOCAL_ENGLISH = 8
 PACKAGE_TABLES = {"refpackageitem.txt": 3, "refpricepolicyofitem.txt": 2, "refscrapofpackageitem.txt": 2}
 PACKAGE_WIDTHS = {"refpackageitem.txt": 17, "refpricepolicyofitem.txt": 13, "refscrapofpackageitem.txt": 29}
 LOCAL_SERVICE = "11"
+# Silk prices of the v1.150 outfit tiers (the European wedding set's): the
+# donor's later prices are not used.
+SILK_CURRENCY = "2"
+SILK_ATTACH, SILK_HAT, SILK_DRESS = "15", "30", "130"
 PACKAGE_ID = 2       # refpackageitem: unique package ID
 SCRAP_ID = -1        # refscrapofpackageitem: unique scrap ID, the last cell
 
@@ -119,6 +124,17 @@ def donor_rows(media, entries, sets):
 
 
 #============================================================================
+# silk_price
+#============================================================================
+def silk_price(code):
+	"""The v1.150 tier of a package: attachment 15, hat 30, dress 130 silk."""
+	stem = re.sub(r"(?:_\d+)+$", "", code)
+	if stem.endswith("_ATTACH"):
+		return SILK_ATTACH
+	return SILK_HAT if stem.endswith("_HAT") else SILK_DRESS
+
+
+#============================================================================
 # package_rows
 #============================================================================
 def package_rows(media, entries, sets):
@@ -144,6 +160,8 @@ def package_rows(media, entries, sets):
 				cells[4] = "0"
 			elif base == "refpricepolicyofitem.txt":
 				del cells[4]
+				if cells[3] == SILK_CURRENCY:
+					cells[4] = silk_price(code)
 			rows[base].append(cells)
 	for name, width in PACKAGE_WIDTHS.items():
 		if any(len(cells) != width for cells in rows[name]):

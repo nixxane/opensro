@@ -34,7 +34,8 @@ The donor's item IDs are kept. The newer client reuses some IDs for other items
 than v1.150 does, so the import refuses an ID (item, package or scrap) the
 extraction already uses. Only mall rows of the named set are taken; the donor's
 event copies are left out. The donor's price rows carry one extra cell, which
-the import drops, and every mall row takes the extraction's service value.
+the import drops; every mall row takes the extraction's service value and the
+silk price of its tier.
 
 Never replace the v1.150 textdata wholesale with the newer client's tables:
 the shared rows differ.
@@ -54,8 +55,8 @@ names the setting and this script.
 
 ## Items and prices
 
-The mall prices are the donor's authored silk prices: 398 for a dress, 160 for
-a hat and 40 for the back accessory. The attachment is listed on the hat tab,
+The mall prices follow the v1.150 outfit tiers, not the donor's later ones:
+130 silk for a dress, 30 for a hat and 15 for the back accessory. The attachment is listed on the hat tab,
 as Halloween's is, because v1.150 has no attachment tab.
 
 | | Male | Female |

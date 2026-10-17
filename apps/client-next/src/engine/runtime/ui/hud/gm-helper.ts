@@ -477,7 +477,7 @@ export function createGmHelper() {
 			const named = /^\/(MAKEITEM|LOADMONSTER) (\S+)\s*$/i.exec( line );
 			if ( !named ) return line;
 			const name = named[1]!.toUpperCase();
-			const amount = amounts.get( named[2]! ) ?? (name === "/LOADMONSTER" ? 1 : 0);
+			const amount = amounts.get( named[2]! ) ?? (name === "LOADMONSTER" ? 1 : 0);
 			return "/" + name + " " + named[2] + " " + amount;
 		},
 		/*

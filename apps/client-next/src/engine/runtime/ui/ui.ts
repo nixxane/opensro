@@ -6172,27 +6172,21 @@ export function createUi(
 				return;
 			}
 
-			// F3 is the catalogue key only inside the focused GM console: plain
-			// F3 stays the native quickslot page 3 everywhere else. Shift+F3
-			// opens the console's catalogue from gameplay without stealing the
-			// native hotbar page. Key binding capture and other panels keep F3.
-			const consoleFocused = consolePhase !== 0 && focus === "gm-input";
+			// Port-only, not native: F3 toggles the catalogue only while the
+			// GM prompt owns focus. Gameplay and binding capture keep F3.
 			if (
 				event.kind === "key" && event.code === "F3" && view?.session?.phase === "world" &&
-				view.gameplay?.eligibility?.gm && panel === "" && (consoleFocused || event.shift)
+				view.gameplay?.eligibility?.gm && consolePhase !== 0 && focus === "gm-input"
 			) {
-				if ( consoleFocused && gmHelper.browsing() ) gmHelper.closeBrowse();
-				else {
-					// F3 is a browse key, not the native console slide: show the
-					// whole list at once so its first row is not clipped.
-					if ( consolePhase === 0 || consolePhase === 2 ) {
-						consolePhase = 3;
-						consoleY = 0;
-					}
+				gmHelper.observe( consoleText, GM_HELPER_ROWS );
+				if ( gmHelper.active() || gmHelper.browsing() ) {
+					// Typed suggestions and F3 browse mode both close without
+					// discarding the command the GM is still editing.
+					gmHelper.dismiss( consoleText );
+				} else {
 					consoleText = "";
 					selection = [ 0, 0 ];
 					gmHelper.open( "items" );
-					focus = "gm-input";
 					focusRequest = { id: "gm-input", revision: ++focusRevision, caret: 0 };
 				}
 				dirty = true;
@@ -6238,6 +6232,7 @@ export function createUi(
 				// Escape closes the list first; the console stays open and keeps
 				// the prompt focused for the amount the GM still has to type.
 				gmHelper.dismiss( consoleText );
+				focus = "gm-input";
 				focusRequest = { id: "gm-input", revision: ++focusRevision, caret: consoleText.length };
 				dirty = true;
 				return;

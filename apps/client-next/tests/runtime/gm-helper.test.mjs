@@ -334,3 +334,15 @@ test("the visible window follows the selection through every row", () => {
 		"ITEM_TEST_" + String( GM_HELPER_ROWS + 4 ).padStart( 3, "0" )
 	);
 });
+
+/*
+================
+test("uncatalogued monster commands keep the default count")
+================
+*/
+test("uncatalogued monster commands keep the default count", () => {
+	const helper = createGmHelper();
+	assert.equal( helper.run( "/loadmonster MOB_UNCACHEABLE " ), "/LOADMONSTER MOB_UNCACHEABLE 1" );
+	helper.setCatalog( catalog() );
+	assert.equal( helper.run( "/LOADMONSTER MOB_UNCACHEABLE " ), "/LOADMONSTER MOB_UNCACHEABLE 1" );
+});

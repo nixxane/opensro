@@ -2724,6 +2724,7 @@ export function createUi(
 			gmHelper.select( Number( id.slice( "gm-helper-row:".length ) ) );
 			// The row button took DOM focus; Enter must reach the prompt again
 			// so it can run the row the GM just clicked.
+			focus = "gm-input";
 			focusRequest = { id: "gm-input", revision: ++focusRevision, caret: consoleText.length };
 			dirty = true;
 			return;
@@ -2734,6 +2735,7 @@ export function createUi(
 				gmHelper.selectTab( tab );
 				consoleText = "";
 				selection = [ 0, 0 ];
+				focus = "gm-input";
 				focusRequest = { id: "gm-input", revision: ++focusRevision, caret: 0 };
 			}
 			dirty = true;
@@ -6170,14 +6172,16 @@ export function createUi(
 				return;
 			}
 
-			// F3 is the VSRO-style item browser: it opens the GM console (or
-			// just the list when it is already open) with every item, and a
-			// second press closes the list.
+			// F3 is the catalogue key only inside the focused GM console: plain
+			// F3 stays the native quickslot page 3 everywhere else. Shift+F3
+			// opens the console's catalogue from gameplay without stealing the
+			// native hotbar page. Key binding capture and other panels keep F3.
+			const consoleFocused = consolePhase !== 0 && focus === "gm-input";
 			if (
 				event.kind === "key" && event.code === "F3" && view?.session?.phase === "world" &&
-				view.gameplay?.eligibility?.gm
+				view.gameplay?.eligibility?.gm && panel === "" && (consoleFocused || event.shift)
 			) {
-				if ( gmHelper.browsing() ) gmHelper.closeBrowse();
+				if ( consoleFocused && gmHelper.browsing() ) gmHelper.closeBrowse();
 				else {
 					// F3 is a browse key, not the native console slide: show the
 					// whole list at once so its first row is not clipped.

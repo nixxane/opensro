@@ -270,6 +270,45 @@ test("a new world replaces the list and clears the selection window", () => {
 
 /*
 ================
+test("a typed command does not leave F3 browse mode stuck open")
+================
+*/
+test("a typed command does not leave F3 browse mode stuck open", () => {
+	const helper = createGmHelper();
+	helper.setCatalog( catalog() );
+	helper.observe( "/MAKEITEM blade" );
+	assert.equal( helper.browsing(), false );
+	assert.equal( helper.observe( "" ).active, false );
+
+	// F3 on Uniques, then a typed /LOADMONSTER shows Monsters; clearing the
+	// line returns to the F3 tab instead of losing it.
+	helper.open( "uniques" );
+	helper.observe( "/LOADMONSTER mang" );
+	assert.equal( helper.tab(), "monsters" );
+	assert.equal( helper.observe( "" ).total, 1 );
+	assert.equal( helper.tab(), "uniques" );
+});
+
+/*
+================
+test("lowercase reference commands match the native wcsicmp")
+================
+*/
+test("lowercase reference commands match the native wcsicmp", () => {
+	const helper = createGmHelper();
+	helper.setCatalog( catalog() );
+	let state = helper.observe( "/makeitem blade" );
+	assert.equal( state.active, true );
+	assert.equal( state.total, 1 );
+	assert.equal( helper.run( "/makeitem ITEM_CH_BLADE_01_A " ), "/MAKEITEM ITEM_CH_BLADE_01_A 0" );
+	state = helper.observe( "/loadmonster mang" );
+	assert.equal( state.active, true );
+	assert.equal( state.total, 1 );
+	assert.equal( helper.run( "/loadmonster MOB_CH_MANGNYANG " ), "/LOADMONSTER MOB_CH_MANGNYANG 1" );
+});
+
+/*
+================
 test("the visible window follows the selection through every row")
 ================
 */

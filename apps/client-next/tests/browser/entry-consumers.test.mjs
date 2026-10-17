@@ -67,6 +67,10 @@ test('GM console uses production input, authority gates and reply channels',{tim
   // F3 opens Items; Right moves to Monsters and then Uniques, whose row is a
   // /LOADMONSTER command.
   await gmInput.press('F3');await page.evaluate(()=>flagFixture.draw());
+  assert.ok(await page.locator('[data-ui-id^="gm-helper-row:"]').count()>0,'F3 reaches the focused prompt');
+  await gmInput.press('F3');await page.evaluate(()=>flagFixture.draw());
+  assert.equal(await page.locator('[data-ui-id^="gm-helper-row:"]').count(),0,'a second F3 closes the list');
+  await gmInput.press('F3');await page.evaluate(()=>flagFixture.draw());
   await gmInput.press('ArrowRight');await page.evaluate(()=>flagFixture.draw());
   await gmInput.press('ArrowRight');await page.evaluate(()=>flagFixture.draw());
   const uniqueRows=await page.locator('[data-ui-id^="gm-helper-row:"]').evaluateAll(nodes=>nodes.map(node=>node.textContent));
@@ -75,11 +79,26 @@ test('GM console uses production input, authority gates and reply channels',{tim
   assert.equal(await gmInput.inputValue(),'/LOADMONSTER MOB_CH_TIGERWOMAN ');
   await gmInput.press('Enter');await page.evaluate(()=>flagFixture.draw());
   assert.deepEqual(await page.evaluate(()=>flagFixture.commands.at(-1)),{kind:'gameplay',command:{kind:'gm-command',line:'/LOADMONSTER MOB_CH_TIGERWOMAN 1'}});
+  // Escape dismisses the list without blurring the prompt.
+  await gmInput.press('F3');await page.evaluate(()=>flagFixture.draw());
+  await gmInput.press('Escape');await page.evaluate(()=>flagFixture.draw());
+  assert.equal(await page.locator('[data-ui-id^="gm-helper-row:"]').count(),0);
+  assert.equal(await page.evaluate(()=>document.activeElement?.dataset.uiId),'gm-input');
   assert.deepEqual(await page.evaluate(()=>flagFixture.ui.stats().failed),[]);assert.equal(await page.evaluate(()=>flagFixture.renderer.error()),null);
   await mkdir('temp/artifacts/intro-event-gm',{recursive:true});await page.screenshot({path:'temp/artifacts/intro-event-gm/console.png'});
   await page.evaluate(()=>{(document.activeElement??document.body).dispatchEvent(new KeyboardEvent('keydown',{code:'Backquote',key:'Backquote',shiftKey:true,bubbles:true}));});
   await page.waitForFunction(()=>{flagFixture.draw();return !document.querySelector('[data-ui-id="gm-input"]');});
-  await page.evaluate(()=>{(document.activeElement??document.body).dispatchEvent(new KeyboardEvent('keydown',{code:'Backquote',key:'Backquote',shiftKey:true,bubbles:true}));});await page.waitForFunction(()=>{flagFixture.draw();return !!document.querySelector('[data-ui-id="gm-input"]');});
+  // Plain F3 stays the native quickslot page for a GM; it must not reopen the
+  // console or the catalogue from gameplay.
+  await page.evaluate(()=>{(document.activeElement??document.body).dispatchEvent(new KeyboardEvent('keydown',{code:'F3',key:'F3',bubbles:true}));});
+  await page.evaluate(()=>flagFixture.draw());
+  assert.equal(await page.locator('[data-ui-id="gm-input"]').count(),0,'plain F3 keeps the native hotbar page');
+  // Shift+F3 opens the catalogue from gameplay without taking plain F3.
+  await page.evaluate(()=>{(document.activeElement??document.body).dispatchEvent(new KeyboardEvent('keydown',{code:'F3',key:'F3',shiftKey:true,bubbles:true}));});
+  await page.waitForFunction(()=>{flagFixture.draw();return !!document.querySelector('[data-ui-id="gm-input"]');});
+  assert.ok(await page.locator('[data-ui-id^="gm-helper-row:"]').count()>0,'Shift+F3 opens the catalogue');
+  await page.evaluate(()=>{(document.activeElement??document.body).dispatchEvent(new KeyboardEvent('keydown',{code:'Backquote',key:'Backquote',shiftKey:true,bubbles:true}));});
+  await page.waitForFunction(()=>{flagFixture.draw();return !document.querySelector('[data-ui-id="gm-input"]');});
   await page.evaluate(()=>{flagFixture.state.gameplay={...flagFixture.state.gameplay,eligibility:{gm:false,pcRoomEvent:true},revision:4};flagFixture.draw();});
   assert.equal(await page.locator('[data-ui-id="gm-input"]').count(),0);
   await page.evaluate(()=>{flagFixture.ui.dispose();flagFixture.platform.dispose();flagFixture.renderer.dispose();});

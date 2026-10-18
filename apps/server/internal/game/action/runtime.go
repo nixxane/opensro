@@ -64,6 +64,9 @@ type Runtime struct {
 	gmSpeeds sync.Map
 	// GMSetSpeed admits /SETSPEED (port-only, SRO_GM_SETSPEED; off is native).
 	GMSetSpeed bool
+	// GMOneShotItem makes a GM wearing the one-shot ring kill a monster or
+	// unique in one hit (port-only, SRO_GM_ONESHOT_ITEM; off is native).
+	GMOneShotItem bool
 	// TeamDeathTownRule sends a team death to the town rule (port-only,
 	// SRO_TEAM_DEATH_REVIVE off; the zero value is native, teamdeath.go).
 	TeamDeathTownRule bool

@@ -105,6 +105,10 @@ func (rt *Runtime) planCreatureMonsterImpacts(caster monsterImpactCaster, skill 
 	}
 	pose := mover.LivePoseAt(now, nil)
 	remaining := target.CurrentHP
+	// Port-only, SRO_GM_ONESHOT_ITEM: the first real hit from a GM wearing the
+	// ring consumes the target's remaining HP. The ordinary commit, reward
+	// settlement and death lifecycle still run below.
+	oneShot := rt.gmOneShot(caster.character, target)
 	plans := make([]simulation.MonsterDamagePlan, 0, len(formulas))
 	for _, formula := range formulas {
 		plan := simulation.MonsterDamagePlan{GID: target.Gid, ExpectedHP: remaining, Damage: formula.Damage, CreditGID: caster.credit}
@@ -116,7 +120,12 @@ func (rt *Runtime) planCreatureMonsterImpacts(caster monsterImpactCaster, skill 
 			plans = append(plans, plan)
 			continue
 		}
-		remaining -= min(remaining, formula.Damage)
+		if oneShot && formula.Damage > 0 {
+			plan.Damage = remaining
+			remaining = 0
+		} else {
+			remaining -= min(remaining, formula.Damage)
+		}
 		if remaining > 0 && skill.Knockdown.Present && target.Ref.Knockdown&1 != 0 && target.Motion.StateAt(now) != 8 {
 			chance := combat.KnockdownChance(skill.Knockdown.Rank, skill.Knockdown.Chance, target.Ref.Level)
 			proc, err := rt.effectOutcome(caster.actor, 0x44000000|(skill.ID&0xffffff), uint32(chance))

@@ -122,6 +122,9 @@ var Settings = []Setting{
 	{Env: "SRO_TRADE_JOB_HUNTER_PERCENT_CAP", NomadVar: "trade_job_hunter_percent_cap", Default: "60"},
 	{Env: "SRO_REVERSE_RETURN_MAP", NomadVar: "reverse_return_map", Default: ""},
 	{Env: "SRO_GM_SETSPEED", NomadVar: "gm_setspeed", Default: "on"},
+	// Owner, 2026-10-18: a GM wearing the degree-1 ring one-shots monsters
+	// and uniques (port-only; off is native).
+	{Env: "SRO_GM_ONESHOT_ITEM", NomadVar: "gm_oneshot_item", Default: "off"},
 	{Env: "SRO_ALCHEMY_RATES", NomadVar: "alchemy_rates", Default: "on", Catalogue: true},
 	// Owner, 2026-10-18: reversed the 2026-10-13 +11 cap; the deployment
 	// default stays native ("off", ceiling 250).

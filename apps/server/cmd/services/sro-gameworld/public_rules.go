@@ -36,7 +36,8 @@ import (
 // unlistedSettings are the shard settings the rules page leaves out, each
 // with the reason; every other setting is a rule (public_rules_test.go).
 var unlistedSettings = map[string]string{
-	action.EnvGMSetSpeed: "a GM command, not a rule players meet",
+	action.EnvGMSetSpeed:    "a GM command, not a rule players meet",
+	action.EnvGMOneShotItem: "a GM item, not a rule players meet",
 	// The tunables a rule's own text shows (game/tunables).
 	"SRO_MOST_WANTED_TEST_KILLS":      "shown in the Most Wanted test pacing rule",
 	"SRO_MOST_WANTED_TEST_BOUNTY":     "shown in the Most Wanted test pacing rule",

@@ -455,6 +455,14 @@ variable "gm_setspeed" {
   default = "on"
 }
 
+# gm_oneshot_item makes a GM wearing the degree-1 CH or EU ring kill a
+# monster or unique in one hit (port-only, not native; owner decision
+# 2026-10-18). Players and structures are excluded; "off" is native.
+variable "gm_oneshot_item" {
+  type    = string
+  default = "off"
+}
+
 # alchemy_rates replaces each elixir's authored reinforcement chance with one
 # table by plus (port-only, not native; owner decision 2026-10-11): "on" is
 # +1 100% ... +11 5%, a comma list such as "100,80,70" is custom, "off" is
@@ -871,6 +879,7 @@ job "sro-gameworld-__SHARD_ID__" {
         SRO_TRADE_JOB_HUNTER_PERCENT_CAP        = var.trade_job_hunter_percent_cap
         SRO_REVERSE_RETURN_MAP                  = var.reverse_return_map
         SRO_GM_SETSPEED                         = var.gm_setspeed
+        SRO_GM_ONESHOT_ITEM                     = var.gm_oneshot_item
         SRO_ALCHEMY_RATES                       = var.alchemy_rates
         SRO_ALCHEMY_MAX_PLUS                    = var.alchemy_max_plus
         SRO_TEAM_DEATH_REVIVE                   = var.team_death_revive

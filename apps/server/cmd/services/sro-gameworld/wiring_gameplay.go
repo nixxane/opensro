@@ -629,6 +629,12 @@ func (game *gameplayPlane) register(hub *transport.Hub, loadQuests questDefiniti
 	if game.items.GMSetSpeed {
 		log.Infof("gm: /SETSPEED ON (%s)", action.EnvGMSetSpeed)
 	}
+	// Port-only, not native: a GM wearing the degree-1 ring one-shots
+	// monsters and uniques.
+	game.items.GMOneShotItem = action.GMOneShotItemFromEnv()
+	if game.items.GMOneShotItem {
+		log.Infof("gm: one-shot ring ON (%s)", action.EnvGMOneShotItem)
+	}
 	// A team death revives in place natively; "off" is the port-only town rule.
 	teamDeathRevive, err := action.TeamDeathReviveFromEnv()
 	if err != nil {

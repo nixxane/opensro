@@ -2872,6 +2872,13 @@
 		},
 		{
 			"file": "src/engine/runtime/characters/presentation-finalize.ts",
+			"expression": "renderer.dungeonRoomHides",
+			"function": "publishCharacters",
+			"kind": "callback",
+			"reason": "The parent renderer reports whether a dungeon room the camera cannot see holds the actor; it changes nothing."
+		},
+		{
+			"file": "src/engine/runtime/characters/presentation-finalize.ts",
 			"expression": "resources.duration",
 			"function": "callback:step:2",
 			"kind": "callback",

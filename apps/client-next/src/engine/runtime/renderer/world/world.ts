@@ -62,6 +62,7 @@ import {
 	type PickRay,
 	type PickAlpha
 } from "@/engine/foundation/rendering/picking";
+import { dungeonRoomBoxes, type RoomBoxes, roomHidesPoint } from "@/engine/foundation/rendering/dungeon-rooms";
 import {
 	cameraCollisionParts,
 	prepareCameraCollisionParts,
@@ -415,6 +416,8 @@ export function createWorldRenderer(
 	// Immutable admitted positions own these bounds; replacement storage invalidates them.
 	const pickBounds = new WeakMap<Float32Array, PickBounds>();
 	const pickBlocks = new WeakMap<WorldGroup, Float64Array>();
+	// The room boxes of the resident dungeon scene (roomHides).
+	let roomBoxes: RoomBoxes = new Map(), roomBoxesScene: WorldScene | null = null;
 	// Camera collision parts of a region's terrain survive crossings with it.
 	const terrainCollision = new WeakMap<WorldGroup, RegionCollision>();
 	const collisionQuery = createCameraQueryCache();
@@ -1183,6 +1186,24 @@ export function createWorldRenderer(
 		*/
 		occludes( ray: PickRay, limit: number ) {
 			return pick( ray, limit, false, false, true ) !== null;
+		},
+		/*
+		================
+		roomHides
+
+		True when a point stands only in dungeon rooms the camera's room cannot
+		see (dungeon-rooms.ts); the scenery of those rooms is not drawn.
+		================
+		*/
+		roomHides( x: number, y: number, z: number ) {
+			if ( !current?.dungeonVisibility || camera.dungeonBlock === undefined ) return false;
+			const visible = current.dungeonVisibility[camera.dungeonBlock];
+			if ( !visible ) return false;
+			if ( roomBoxesScene !== current ) {
+				roomBoxes = dungeonRoomBoxes( current.groups );
+				roomBoxesScene = current;
+			}
+			return roomHidesPoint( roomBoxes, visible, x, y, z );
 		},
 		/*
 		================

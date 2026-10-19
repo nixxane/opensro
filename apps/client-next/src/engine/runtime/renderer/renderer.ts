@@ -199,6 +199,17 @@ export function createRenderer(
 		},
 		/*
 		================
+		dungeonRoomHides
+
+		A character in a dungeon room the camera cannot see is neither drawn nor
+		picked, as the scenery of that room is not drawn.
+		================
+		*/
+		dungeonRoomHides( x, y, z ) {
+			return world.roomHides( x, y, z );
+		},
+		/*
+		================
 		experimentalVideo
 		================
 		*/
@@ -372,6 +383,12 @@ export function createRenderer(
 			}
 			// 692680 returns the winning entity virtual pick directly. Map scenery
 			// is not a second veto (698740 consumes that same winner).
+			// Port-only, not native: the original never draws a dungeon mover from a
+			// room the camera cannot see, so a wall never stood between the cursor
+			// and its target. This client still draws and picks them, so inside a
+			// dungeon (region bit 0x8000) scenery between the eye and the winner
+			// vetoes the pick.
+			if ( hit && (pickOrigin & 0x8000) && world.occludes( rays[hit.ray]!, hit.depth ) ) return null;
 			return hit?.gid ?? null;
 		},
 		setUi: scene => {

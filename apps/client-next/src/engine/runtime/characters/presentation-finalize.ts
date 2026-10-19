@@ -369,7 +369,10 @@ Borrow only the mall mannequin operations this publication phase consumes.
 ================
 */
 interface PortraitBindings {
-	readonly renderer: Pick<Renderer, "setCharacterAssembly" | "setCharacterActors" | "vHidesCompanions">;
+	readonly renderer: Pick<
+		Renderer,
+		"setCharacterAssembly" | "setCharacterActors" | "vHidesCompanions" | "dungeonRoomHides"
+	>;
 	readonly resources: PortraitResources;
 	readonly mallPreview: {
 		skin(): { model: number; shape: number; } | null;
@@ -448,7 +451,10 @@ export function publishCharacters(
 	const presentedActors: CharacterActor[] = [], wanted: string[] = [];
 	const companionsBlind = blindHeld && renderer.vHidesCompanions?.() === true;
 	for ( const actor of next.values() ) {
-		const hidden = blindHeld && actor.blindable || companionsBlind && actor.blindableCompanion;
+		// The pose is region-local; the dungeon room boxes are in the dungeon's frame.
+		const hidden = blindHeld && actor.blindable || companionsBlind && actor.blindableCompanion ||
+			(actor.pose.regionId & 0x8000) !== 0 &&
+				renderer.dungeonRoomHides?.( actor.pose.x, actor.pose.y, actor.pose.z ) === true;
 		presentedActors.push( hidden ? { ...actor, opacity: 0, pickable: false } : actor );
 		wanted.push( actor.model );
 	}

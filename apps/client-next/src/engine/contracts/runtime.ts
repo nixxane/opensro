@@ -253,6 +253,7 @@ export interface Renderer extends Disposable {
 	// Port-only, not native: whether holding V also hides other players'
 	// companions (Experimental, off by default).
 	vHidesCompanions?(): boolean;
+	dungeonRoomHides?( x: number, y: number, z: number ): boolean;
 	setSelectionDecal(
 		value: { readonly pose: import("./gameplay").Pose; readonly slot: 0 | 1 | 2 | 3; } | null
 	): void;

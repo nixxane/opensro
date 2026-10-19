@@ -126,6 +126,9 @@ export interface Bundle {
 			regionId: string;
 			position: { x: number; y: number; z: number; };
 			yaw: number;
+			// A DOF block object: the record's rotation vector and scale (dungeonObjectMatrix).
+			rotation?: readonly [number, number, number];
+			scaleXyz?: readonly [number, number, number];
 		}[];
 		resources: {
 			meshes: Mesh[];

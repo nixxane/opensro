@@ -436,7 +436,14 @@ export function navObstacleContact(
 			if ( t < 0 || t > 1 ) continue;
 		}
 		if ( ownership && !ownership.some( span => t >= span.from - 1e-8 && t <= span.to + 1e-8 ) ) continue;
-		const q = navLocal( p, from[0]! + dx * t, from[1]! + (to[1]! - from[1]!) * t, from[2]! + dz * t ),
+		// Port-only, not native: native parity of this vertical gate is not
+		// verified (452d10 contributes the XZ circle). The authored circle is a
+		// sphere at an absolute Y. An out_obj_door circle sits 50 units above its
+		// floor, so a 2D-only test stops the walker 30 units before the door with
+		// nothing visible in the way. Mirrors dungeon_clip.go clipDungeonPath.
+		const hitY = from[1]! + (to[1]! - from[1]!) * t;
+		if ( Math.abs( hitY - obstacle.y ) > Math.sqrt( obstacle.radiusSquared ) ) continue;
+		const q = navLocal( p, from[0]! + dx * t, hitY, from[2]! + dz * t ),
 			h = navHeight( p.mesh, q[0], q[2], q[1] );
 		if ( h !== null && Math.abs( h - q[1] ) <= 2 ) return t;
 	}

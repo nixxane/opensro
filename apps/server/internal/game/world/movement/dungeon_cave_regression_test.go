@@ -155,6 +155,42 @@ Y 140; the real cave has no branch-isolating geometry for it (see
 TestDonwhangCaveFloorEndStepStaysOnWalkedFloor above).
 ================
 */
+/*
+================
+TestDungeonObstacleUsesAuthoredHeight
+
+A DOF collision object is a sphere at an absolute authored height. An
+out_obj_door circle is authored 50 units above its floor; projecting it onto
+XZ alone stopped walkers 30 units before the door with nothing visible in the
+way. A sphere that does not reach the walked plane must not clip, while a
+floor-level sphere still does.
+================
+*/
+func TestDungeonObstacleUsesAuthoredHeight(t *testing.T) {
+	floor := &objectNavMesh{
+		vertices: []float32{0, 0, 0, 100, 0, 0, 100, 0, 100, 0, 0, 100},
+		cellA:    []uint16{0, 0}, cellB: []uint16{1, 2}, cellC: []uint16{2, 3},
+		minX: 0, maxX: 100, minY: 0, maxY: 0, minZ: 0, maxZ: 100,
+	}
+	floor.buildCellBoxes()
+	surface := newDungeonSpawnSurface(dungeonMessageGrid{}, []dungeonSpawnBlock{{
+		meshes: []*objectNavMesh{floor},
+		obstacles: []dungeonObstacle{{
+			x: 50, y: 50, z: 50, radiusSquared: 25 * 25,
+		}},
+	}})
+	v := &WaterValidator{dungeonSpawnSurfaces: map[uint16]*dungeonSpawnSurface{donwhangCaveRegion: surface}}
+	v.dungeonSpawnOnce.Do(func() {})
+	from, to := donwhangCaveSpawn(10, 0, 50), donwhangCaveSpawn(90, 0, 50)
+	if got := v.clipDungeonPath(from, to); got.Outcome != ClipArrived {
+		t.Fatalf("off-floor sphere clipped the floor: %s at %+v", got.Outcome, got.Rest)
+	}
+	surface.blocks[0].obstacles[0].y = 0
+	if got := v.clipDungeonPath(from, to); got.Outcome != ClipBlocked || got.Rest.X < 24.8 || got.Rest.X >= 25 {
+		t.Fatalf("floor-level sphere: %s at %+v, want blocked just short of x 25", got.Outcome, got.Rest)
+	}
+}
+
 func TestDungeonClipEndpointGuardRefusesUpperFloor(t *testing.T) {
 	lower := &objectNavMesh{
 		vertices: []float32{0, 0, -100, 100, 0, -100, 100, 0, 0.5, 0, 0, 0.5},

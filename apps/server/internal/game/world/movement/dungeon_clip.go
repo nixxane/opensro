@@ -130,6 +130,17 @@ func (v *WaterValidator) clipDungeonPath(from, to simulation.Spawn) ClipReport {
 			}
 			px, pz := from.X+dx*t, from.Z+dz*t
 			hint := startY + (to.Y-from.Y)*t
+			// Port-only, not native: native parity of this vertical gate is not
+			// verified. Mirrors object-navigation.ts navObstacleContact.
+			// The DOF collision object is a sphere and its authored Y is
+			// absolute. A walkable plane more than the radius away cannot be
+			// stopped by that sphere. The cave's out_obj_door circles sit 50
+			// units above the floor, and the four cached floors share XZ; a
+			// purely 2D projection invents invisible walls at those doors and
+			// lets every floor's circles block the others.
+			if o.radiusSquared < 0 || math.Abs(o.y-hint) > math.Sqrt(o.radiusSquared) {
+				continue
+			}
 			single := dungeonSpawnSurface{blocks: surface.blocks[i : i+1]}
 			h, inside := single.heightAt(px, hint, pz)
 			if inside && math.Abs(h-hint) <= 2 {

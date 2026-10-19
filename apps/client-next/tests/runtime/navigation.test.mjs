@@ -529,6 +529,13 @@ test("authored dungeon collision circles clip movement and permit escape from an
 	assert.ok( hit.x > 34.9 && hit.x < 35 );
 	assert.equal( nav.clip( { ...a, x: 65 }, { ...a, x: 60 } ).x, 65 );
 	assert.equal( nav.clip( { ...a, x: 65 }, b ).x, 90 );
+	// The same circle authored 50 units above the walked plane (the Donwhang
+	// out_obj_door case) must not project onto the floor.
+	const above = createNavigation(), raised = product( 0x8001 );
+	raised.objects[0].mesh.edges = new Uint32Array();
+	raised.objects[0].obstacles = [ { x: 60, y: 60, z: 50, radiusSquared: 625 } ];
+	above.install( raised.regionId, raised );
+	assert.equal( above.clip( a, b ).x, 90 );
 });
 
 test("dungeon destinations outside admitted triangles reach collision before endpoint admission", () => {

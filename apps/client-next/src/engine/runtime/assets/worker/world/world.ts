@@ -901,7 +901,9 @@ noteMaterial
 				scenery,
 				soundTerrain: objectPart ? decodeSoundTerrain( b ) : undefined,
 				dungeonVisibility: b.dungeonBlocks?.map( block => [ block.index, ...block.visibleBlocks ] ),
-				dungeonAmbient: b.dungeonBlocks?.map( block => dungeonBlockAmbient( block.fog.color ) ),
+				dungeonAmbient: b.dungeonBlocks?.every( block => typeof block.fog?.color === "number" ) ?
+					b.dungeonBlocks.map( block => dungeonBlockAmbient( block.fog.color ) ) :
+					undefined,
 				waterBump: b.water?.reflectionBumpPublicPath,
 				flareTextures: region & 0x8000 || !objectPart ? undefined : b.sky?.flareTexturePublicPaths,
 				starRandomState: objectPart ? b.sky?.starPrimitive?.nativeRand?.stateAfterConstruction : undefined,

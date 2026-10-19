@@ -68,3 +68,21 @@ test("an outdoor scene has no dungeon ambient", () => {
 	);
 	assert.equal( scene.dungeonAmbient, undefined );
 });
+
+test("blocks that carry no fog colour publish no ambient", () => {
+	const scene = createWorldDecoder().decode(
+		new TextEncoder().encode( JSON.stringify( {
+			source: { sectorX: 1, sectorY: 128 },
+			terrain: { blocks: [] },
+			terrainTextures: { tileCatalog: { referencedTiles: [] } },
+			dungeonBlocks: [ { index: 0, visibleBlocks: [ 0 ] } ],
+			objects: {
+				resources: { bsr: [], meshes: [], materialSets: [], textures: [], missing: [], missingCount: 0 },
+				placements: []
+			}
+		} ) ),
+		false,
+		{ origin: 0x8001, part: "all" }
+	);
+	assert.equal( scene.dungeonAmbient, undefined );
+});

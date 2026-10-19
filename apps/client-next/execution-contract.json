@@ -1397,7 +1397,8 @@
 			"provider": "src/engine/runtime/simulation/worker/session/world/gameplay/movement/navigation/navigation.ts",
 			"functions": [
 				"surface",
-				"clip"
+				"clip",
+				"block"
 			]
 		},
 		{
@@ -1582,6 +1583,7 @@
 			"functions": [
 				"callback:createEntities:0",
 				"callback:createEntities:1",
+				"callback:createEntities:4",
 				"callback:recolor:0",
 				"callback:refreshHoverAttack:0",
 				"nameContext"

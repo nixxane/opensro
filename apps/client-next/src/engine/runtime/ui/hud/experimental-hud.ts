@@ -141,6 +141,12 @@ export const EXPERIMENTAL_TABS: readonly {
 				id: "experimental-enchant-sparks",
 				label: "Enchant sparks",
 				description: "Sparks on +8 and higher weapons and shields."
+			},
+			{
+				key: "dungeonRoomCulling",
+				id: "experimental-dungeon-room-culling",
+				label: "Dungeon room culling",
+				description: "Hide monsters in unseen dungeon rooms."
 			}
 		]
 	},

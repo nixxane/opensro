@@ -802,7 +802,7 @@ export function createCharacterPresentation(
 			}
 		);
 		publishCharacters(
-			{ local, gameplay, next, seconds, blindHeld },
+			{ local, gameplay, next, entitiesByGid, seconds, blindHeld },
 			output,
 			published,
 			{ renderer, resources, mallPreview }

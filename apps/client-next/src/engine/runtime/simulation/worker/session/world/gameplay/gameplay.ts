@@ -2869,6 +2869,7 @@ references
 			}
 		},
 		surface: movement.surface,
+		entityBlock: movement.entityBlock,
 		clipMovement: movement.clipMovement,
 		/*
 ================

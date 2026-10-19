@@ -335,6 +335,7 @@ interface PortraitFrame {
 	readonly local: EntityState | undefined;
 	readonly gameplay: GameplayState | null;
 	readonly next: Map<number, CharacterActor>;
+	readonly entitiesByGid: ReadonlyMap<number, EntityState>;
 	readonly seconds: number;
 	readonly blindHeld: boolean;
 }
@@ -405,7 +406,7 @@ export function publishCharacters(
 	published: PortraitCatalog,
 	bindings: PortraitBindings
 ) {
-	const { local, gameplay, next, seconds, blindHeld } = frame;
+	const { local, gameplay, next, entitiesByGid, seconds, blindHeld } = frame;
 	const { catalog, dress, manifest } = published;
 	const { renderer, resources, mallPreview } = bindings;
 	// 5BAF70 -> 5B9DF0 builds a slot-owned preview from the roster model.
@@ -451,10 +452,9 @@ export function publishCharacters(
 	const presentedActors: CharacterActor[] = [], wanted: string[] = [];
 	const companionsBlind = blindHeld && renderer.vHidesCompanions?.() === true;
 	for ( const actor of next.values() ) {
-		// The pose is region-local; the dungeon room boxes are in the dungeon's frame.
+		const room = entitiesByGid.get( actor.gid )?.dungeonBlock;
 		const hidden = blindHeld && actor.blindable || companionsBlind && actor.blindableCompanion ||
-			(actor.pose.regionId & 0x8000) !== 0 &&
-				renderer.dungeonRoomHides?.( actor.pose.x, actor.pose.y, actor.pose.z ) === true;
+			room !== undefined && renderer.dungeonRoomHides?.( room ) === true;
 		presentedActors.push( hidden ? { ...actor, opacity: 0, pickable: false } : actor );
 		wanted.push( actor.model );
 	}

@@ -79,6 +79,12 @@ export interface ExperimentalOptions {
 	// (CICCos_ResolveDrawOwner 854680), which ignores the key. Off unless
 	// turned on (the balance advisor's ask, owner-approved 2026-10-15).
 	readonly vHidesCompanions: boolean;
+	// Port-only, not native: a monster or player the navmesh puts in a dungeon
+	// room the camera's room does not draw is hidden and cannot be clicked,
+	// as that room's scenery is not drawn. The original draws every entity in
+	// its frustum, so mobs show floating in the void behind a culled room.
+	// Off unless turned on.
+	readonly dungeonRoomCulling: boolean;
 	// Port-only, not native: an authored label wider than its box wraps onto
 	// two lines inside it, and an open list that would leave its window opens
 	// upward (the original runs the text past the window's edge and draws the
@@ -191,6 +197,7 @@ export function experimentalOptions( value: unknown = null ): ExperimentalOption
 		dropPlusNotices: record.dropPlusNotices !== false,
 		plusSevenNotices: record.plusSevenNotices !== false,
 		vHidesCompanions: enabled( "vHidesCompanions" ),
+		dungeonRoomCulling: enabled( "dungeonRoomCulling" ),
 		fitWindowLabels: record.fitWindowLabels !== false,
 		dropOnBagTab: record.dropOnBagTab !== false,
 		noticeLinks: record.noticeLinks !== false,
@@ -246,6 +253,7 @@ export interface ExperimentalVideo {
 	readonly enchantSparks: boolean;
 	readonly sharedActorRoom: boolean;
 	readonly vHidesCompanions: boolean;
+	readonly dungeonRoomCulling: boolean;
 }
 
 /*
@@ -267,7 +275,8 @@ export function experimentalVideo( options: ExperimentalOptions ): ExperimentalV
 		smoothCamera: options.smoothCamera,
 		enchantSparks: options.enchantSparks,
 		sharedActorRoom: options.sharedActorRoom,
-		vHidesCompanions: options.vHidesCompanions
+		vHidesCompanions: options.vHidesCompanions,
+		dungeonRoomCulling: options.dungeonRoomCulling
 	};
 }
 

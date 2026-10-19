@@ -73,7 +73,11 @@ export function createEntities(
 	surface?: import("@/engine/contracts/navigation").SurfaceResolver,
 	lifecycle?: ( event: Extract<WorldEvent, { kind: "spawn" | "despawn"; }> ) => void,
 	nameContext?: ( entity?: EntityState ) => NameColorContext | undefined,
-	clip?: import("./motion/motion").MotionClip
+	clip?: import("./motion/motion").MotionClip,
+	block?: (
+		pose: import("@/engine/contracts/gameplay").Pose,
+		owner?: import("@/engine/foundation/navigation/dungeon-ownership").NavOwner
+	) => number | undefined
 ) {
 	// A 16 MiB admitted server bootstrap can require twice that in UTF-16
 	// accounting. Static catalogues publish once; event count stays bounded.
@@ -256,6 +260,22 @@ export function createEntities(
 	}
 	/*
 	================
+	withBlock
+
+	Port-only, not native: the entity with the dungeon room its navmesh owner
+	stands in (navigation.block, the same lookup that gives the local player's
+	camera block). The entity itself when the room is unchanged, so an outdoor
+	or settled mover costs no new journal state.
+	================
+	*/
+	function withBlock( entity: EntityState ): EntityState {
+		if ( !block || !(entity.regionId & 0x8000) ) return entity;
+		const pose = { regionId: entity.regionId, x: entity.x, y: entity.y, z: entity.z, angle: entity.heading };
+		const dungeonBlock = block( pose, motion.owner( entity.gid ) );
+		return dungeonBlock === entity.dungeonBlock ? entity : Object.freeze( { ...entity, dungeonBlock } );
+	}
+	/*
+	================
 	groundedSpawn
 	================
 	*/
@@ -266,7 +286,7 @@ export function createEntities(
 		) return entity;
 		const pose = { regionId: entity.regionId, x: entity.x, y: entity.y, z: entity.z, angle: entity.heading };
 		const y = surface( pose, pose ).y;
-		return y === entity.y ? entity : Object.freeze( { ...entity, y } );
+		return withBlock( y === entity.y ? entity : Object.freeze( { ...entity, y } ) );
 	}
 	/*
 	================
@@ -1399,7 +1419,7 @@ export function createEntities(
 			}
 			for ( const pose of motion.step( now ) ) {
 				const current = entities.get( pose.gid );
-				if ( current ) samplePose( Object.freeze( { ...current, ...pose } ) );
+				if ( current ) samplePose( withBlock( Object.freeze( { ...current, ...pose } ) ) );
 			}
 		},
 		read: ( gid: number ) => entities.get( gid ),

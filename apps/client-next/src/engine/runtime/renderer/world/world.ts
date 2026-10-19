@@ -62,7 +62,6 @@ import {
 	type PickRay,
 	type PickAlpha
 } from "@/engine/foundation/rendering/picking";
-import { dungeonRoomBoxes, type RoomBoxes, roomHidesPoint } from "@/engine/foundation/rendering/dungeon-rooms";
 import {
 	cameraCollisionParts,
 	prepareCameraCollisionParts,
@@ -416,10 +415,6 @@ export function createWorldRenderer(
 	// Immutable admitted positions own these bounds; replacement storage invalidates them.
 	const pickBounds = new WeakMap<Float32Array, PickBounds>();
 	const pickBlocks = new WeakMap<WorldGroup, Float64Array>();
-	// Units (10 to the metre) around the camera target inside which a character is never room-culled.
-	const ROOM_CULL_SAFE_RADIUS = 250;
-	// The room boxes of the resident dungeon scene (roomHides).
-	let roomBoxes: RoomBoxes = new Map(), roomBoxesScene: WorldScene | null = null;
 	// Camera collision parts of a region's terrain survive crossings with it.
 	const terrainCollision = new WeakMap<WorldGroup, RegionCollision>();
 	const collisionQuery = createCameraQueryCache();
@@ -1193,25 +1188,14 @@ export function createWorldRenderer(
 		================
 		roomHides
 
-		True when a point stands only in dungeon rooms the camera's room cannot
-		see (dungeon-rooms.ts); the scenery of those rooms is not drawn.
+		True when the dungeon room `block` is not among those the camera's room
+		draws (the same dungeonVisibility list that culls the scenery).
 		================
 		*/
-		roomHides( x: number, y: number, z: number ) {
+		roomHides( block: number ) {
 			if ( !current?.dungeonVisibility || camera.dungeonBlock === undefined ) return false;
 			const visible = current.dungeonVisibility[camera.dungeonBlock];
-			if ( !visible ) return false;
-			// Whatever stands near the player is never culled: the room boxes are an
-			// approximation, and a mob that hits the player must be seen.
-			const target = camera.target;
-			if (
-				Math.hypot( x - target[0], y - target[1], z - target[2] ) < ROOM_CULL_SAFE_RADIUS
-			) return false;
-			if ( roomBoxesScene !== current ) {
-				roomBoxes = dungeonRoomBoxes( current.groups );
-				roomBoxesScene = current;
-			}
-			return roomHidesPoint( roomBoxes, visible, x, y, z );
+			return visible !== undefined && !visible.includes( block );
 		},
 		/*
 		================

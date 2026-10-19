@@ -63,6 +63,13 @@ export function worldSceneBytes( scene: WorldScene | null ): number {
 				row.some( i => !Number.isInteger( i ) || i < 0 || i >= scene.dungeonVisibility!.length )
 			))
 	) throw Error( "Invalid dungeon visibility" );
+	if (
+		scene.dungeonAmbient &&
+		(scene.dungeonAmbient.length > 4096 ||
+			scene.dungeonAmbient.some( row =>
+				row.length !== 3 || row.some( v => !Number.isFinite( v ) || v < 0 || v > 1 )
+			))
+	) throw Error( "Invalid dungeon ambient" );
 	if ( scene.scenery ) {
 		if ( !Array.isArray( scene.scenery ) || scene.scenery.length > 8192 ) {
 			throw Error( "Scenery emitter budget exceeded" );
@@ -87,6 +94,7 @@ export function worldSceneBytes( scene: WorldScene | null ): number {
 		0
 	) + (scene.flareTextures ?? []).reduce( ( sum, p ) => sum + p.length * 2, 0 );
 	bytes += (scene.dungeonVisibility ?? []).reduce( ( n, row ) => n + row.length * 8 + 32, 0 );
+	bytes += (scene.dungeonAmbient ?? []).length * 56;
 	if ( Object.keys( scene.models ?? {} ).length > 64 ) throw new Error( "World animated model budget exceeded" );
 	for ( const model of Object.values( scene.models ?? {} ) ) {
 		bytes += characterBytes( model, [] ) + characterPoseBytes( model );
@@ -340,6 +348,7 @@ export function copyWorldScene( scene: WorldScene ): WorldScene {
 		scenery: scene.scenery ? structuredClone( scene.scenery ) : undefined,
 		soundTerrain: scene.soundTerrain?.map( row => ({ ...row, types: row.types.slice() }) ),
 		dungeonVisibility: scene.dungeonVisibility?.map( row => row.slice() ),
+		dungeonAmbient: scene.dungeonAmbient?.map( row => [ row[0], row[1], row[2] ] as const ),
 		flareTextures: scene.flareTextures?.slice(),
 		models: scene.models ? structuredClone( scene.models ) : undefined,
 		environment: scene.environment ? structuredClone( scene.environment ) : undefined,
@@ -484,6 +493,7 @@ export function prepareWorldScene( scene: WorldScene ): PreparedWorldScene {
 		scene: {
 			...scene,
 			dungeonVisibility: scene.dungeonVisibility?.map( row => row.slice() ),
+			dungeonAmbient: scene.dungeonAmbient?.map( row => [ row[0], row[1], row[2] ] as const ),
 			groups: packGroupStreams( groups )
 		},
 		bytes: bytes - dropped,

@@ -182,6 +182,24 @@ export function environmentTime(
 }
 /*
 ================
+dungeonBlockAmbient
+
+A dungeon block's light colour as 0..1 RGB. SWorld 0x8B17E0 splits the block's
+colour (CRTDunBlock vf[6], a 0xAARRGGBB word) into bytes, divides each by the
+double 255.0 and stores floats: the Ambient of its one directional light,
+whose Diffuse and Specular are zero.
+================
+*/
+export function dungeonBlockAmbient( color: number ): [number, number, number] {
+	const c = color >>> 0;
+	return [
+		Math.fround( ((c >>> 16) & 255) / 255 ),
+		Math.fround( ((c >>> 8) & 255) / 255 ),
+		Math.fround( (c & 255) / 255 )
+	];
+}
+/*
+================
 worldEnvironment
 ================
 */

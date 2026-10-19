@@ -41,6 +41,7 @@ import {
 	worldSceneBytes
 } from "@/engine/foundation/rendering/world-scene";
 import type { WorldScene, WorldGroup, WorldMaterial, TerrainRange } from "@/engine/contracts/scene";
+import { dungeonBlockAmbient } from "@/engine/foundation/rendering/world-environment";
 import { identity, mapPlacement } from "@/engine/foundation/rendering/world-math";
 import type { Bundle, Material, Mesh, ObjectBranch } from "./internal/resource-contract";
 import { sceneryMaterial } from "@/engine/foundation/rendering/scenery-modifiers";
@@ -900,6 +901,7 @@ noteMaterial
 				scenery,
 				soundTerrain: objectPart ? decodeSoundTerrain( b ) : undefined,
 				dungeonVisibility: b.dungeonBlocks?.map( block => [ block.index, ...block.visibleBlocks ] ),
+				dungeonAmbient: b.dungeonBlocks?.map( block => dungeonBlockAmbient( block.fog.color ) ),
 				waterBump: b.water?.reflectionBumpPublicPath,
 				flareTextures: region & 0x8000 || !objectPart ? undefined : b.sky?.flareTexturePublicPaths,
 				starRandomState: objectPart ? b.sky?.starPrimitive?.nativeRand?.stateAfterConstruction : undefined,

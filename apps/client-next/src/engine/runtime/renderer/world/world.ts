@@ -133,6 +133,8 @@ function drawPhase( { material }: WorldGroup ): number {
 // followInput's slots: target xyz, yaw, pitch, distance, height, mounted,
 // offset xy, collision distance.
 const FOLLOW_INPUT_LENGTH = 11;
+// The Environment uniform's diffuse and ambient vec4s (renderer.ts ENVIRONMENT_DIFFUSE / _AMBIENT).
+const DUNGEON_ENVIRONMENT_DIFFUSE = 8, DUNGEON_ENVIRONMENT_AMBIENT = 12;
 // GPU geometry bytes admitted per frame while a scene loads. A region's
 // terrain arrives as a few megabytes; spreading it keeps crossings smooth.
 // At least one group is admitted each frame, whatever its size.
@@ -1724,6 +1726,16 @@ export function createWorldRenderer(
 			if ( !current?.environment ) {
 				environmentState = null;
 				environmentSeconds = null;
+			}
+			// SWorld 0x8B17E0: a dungeon is lit by one directional light with zero
+			// diffuse and the current block's colour as ambient, not by the outdoor
+			// sun the missing environment would otherwise default to.
+			if ( current?.dungeonAmbient && camera.dungeonBlock !== undefined ) {
+				const ambient = current.dungeonAmbient[camera.dungeonBlock];
+				if ( ambient ) {
+					environment.set( [ 0, 0, 0 ], DUNGEON_ENVIRONMENT_DIFFUSE );
+					environment.set( ambient, DUNGEON_ENVIRONMENT_AMBIENT );
+				}
 			}
 			const dt = fadeSeconds === null ? 0 : Math.max( 0, seconds - fadeSeconds );
 			fadeSeconds = seconds;

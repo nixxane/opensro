@@ -167,6 +167,10 @@ export interface WorldScene {
 	readonly scenery?: readonly import("./scenery").SceneryEmitter[];
 	readonly soundTerrain?: readonly import("@/engine/foundation/audio/terrain-sounds").SoundTerrain[];
 	readonly dungeonVisibility?: readonly (readonly number[])[];
+	// The dungeon light of each room block, indexed like dungeonVisibility: 0xAD..'s block colour
+	// (CRTDunBlock vf[6], the block fog colour) as 0..1 RGB. SWorld 0x8B17E0 lights the whole
+	// dungeon with one directional light of zero diffuse and this ambient.
+	readonly dungeonAmbient?: readonly (readonly [number, number, number])[];
 	readonly waterBump?: string;
 	readonly flareTextures?: readonly string[];
 	readonly starRandomState?: number;

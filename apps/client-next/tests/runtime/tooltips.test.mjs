@@ -29,6 +29,7 @@ import { assertItemNameCoverage } from "../../../../scripts/build/shared/itemNam
 import nameCompletions from "../../../../scripts/build/shared/itemNameCompletions.json" with { type: "json" };
 import { readPublishedAssetJsonSync, readPackedAssetBytesSync } from "../../../../scripts/lib/publishedAsset.mjs";
 import { defined } from "../helpers/defined.mjs";
+import { NATIVE_ONLY } from "../helpers/expanded-build.mjs";
 /*
 ================
 load
@@ -48,10 +49,10 @@ const strings = {
 	...JSON.parse( readFileSync( CLIENT_PUBLIC_ROOT + "/assets/text/textdataname.en.json", "utf8" ) ).entries
 };
 const text = s => strings[s] ?? "";
-test("published native catalogue admits every skill and rejects shifted columns", () => {
+test( "published native catalogue admits every skill and rejects shifted columns", NATIVE_ONLY, () => {
 	assert.equal( catalog.size, 27835 );
 	assert.throws( () => decodeTooltipSkills( { ...source, columns: source.columns.slice( 1 ) } ), /catalogue/ );
-});
+} );
 test("all published skill tooltips compose without unresolved prerequisite or parameter crashes", () => {
 	const progression = { level: 1, skillPoints: 0, masteries: [] };
 	let descriptions = 0;
@@ -475,7 +476,7 @@ function assertSameBytes( actual, expected, message ) {
 const { createInventory } = await load(
 	"src/engine/runtime/simulation/worker/session/world/gameplay/inventory/inventory.ts"
 );
-test("item localization is shared by published descriptions and server inventory references", () => {
+test( "item localization is shared by published descriptions and server inventory references", NATIVE_ONLY, () => {
 	const source = readFileSync( path.join( retailTextdataRoot, "textdataname.txt" ) );
 	const projected = completeItemTextProjection( source ), again = completeItemTextProjection( projected );
 	// The server bundle applies the item names first, then the authored English
@@ -551,7 +552,7 @@ test("item localization is shared by published descriptions and server inventory
 		assert.ok( rows.some( r => r.value === ITEM_TEXT_COMPLETIONS[symbol + "_TT_DESC"] ) );
 		assert.ok( rows.some( r => r.value === text( "UIIT_STT_AMOUNT" ) + " 10" ) );
 	}
-});
+} );
 
 test("item completions replace only catalogued blank or dash cells and preserve record bytes", () => {
 	const symbol = "SN_ITEM_ETC_MP_POTION_05", expected = "MP recovery potion (X-large)";

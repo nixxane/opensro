@@ -23,7 +23,14 @@ import { partyCharacterCountries } from "@/engine/foundation/gameplay/party-matc
 import { createTooltipSkillDecoder } from "@/engine/foundation/ui/skill-tooltip-catalog";
 import type { TooltipSkillCatalog } from "@/engine/foundation/ui/skill-tooltip-data";
 import { decodeActionSlots, type ActionSlot } from "@/engine/foundation/ui/action-layout";
-import { decodeMapLabels, decodeMapIcons, type MapLabel, type MapIcon } from "@/engine/foundation/ui/world-map";
+import {
+	decodeMapLabels,
+	decodeMapIcons,
+	decodeWorldMapLayout,
+	type WorldMapLayout,
+	type MapLabel,
+	type MapIcon
+} from "@/engine/foundation/ui/world-map";
 import { creationNameRules, NAME_FILTER_GUILD, type NameRules } from "@/engine/foundation/ui/character-create";
 import { decodeSkillUi, type SkillUi } from "@/engine/foundation/ui/skill-layout";
 import { equipmentSocket } from "@/engine/foundation/ui/inventory-layout";
@@ -71,6 +78,7 @@ interface HudData {
 	readonly extended: readonly AuthoredLayout[];
 	readonly countries: Readonly<Record<number, number>>;
 	readonly tooltipSkills: TooltipSkillCatalog;
+	readonly mapLayout: WorldMapLayout;
 	readonly mapIcons: readonly MapIcon[];
 	readonly actions: readonly ActionSlot[];
 	readonly mapLabels: readonly MapLabel[];
@@ -283,7 +291,8 @@ export function createHudResources(
 			"/assets/data/teleportData.json",
 			"/assets/data/cosPresentation.json",
 			"/assets/data/mall-notify.json",
-			"/assets/config/command.txt"
+			"/assets/config/command.txt",
+			"/assets/data/worldmap-mapinfo.json"
 		],
 		states: Load[] = paths.map( () => ({ kind: "idle" }) );
 	let data: HudData | null = null;
@@ -370,7 +379,8 @@ export function createHudResources(
 										warm.add( entry.publicPath );
 									}
 								}
-							} else if ( i === layouts.length + 16 ) value = decodeCommandTable( r.buffer );
+							} else if ( i === layouts.length + 17 ) value = raw;
+							else if ( i === layouts.length + 16 ) value = decodeCommandTable( r.buffer );
 							else if ( i === layouts.length + 15 ) value = decodeMallNotify( raw );
 							else if ( i === layouts.length + 14 ) value = decodeCosReferences( raw );
 							else if ( i === layouts.length + 13 ) value = decodePortalCatalog( raw );
@@ -418,6 +428,9 @@ export function createHudResources(
 			}
 			if ( !data && states.every( s => s.kind === "ready" ) ) {
 				const values = states.map( s => s.kind === "ready" ? s.value : null );
+				// The map pages and overview box first: the icon and label decoders place
+				// world-map rows by the overview's origin.
+				const mapLayout = decodeWorldMapLayout( values[layouts.length + 17] );
 				data = {
 					withdrawalPage,
 					stallPricePage,
@@ -433,11 +446,13 @@ export function createHudResources(
 					countries: values[layouts.length + 10] as HudData["countries"],
 					regionCodes: values[layouts.length + 9] as HudData["regionCodes"],
 					tooltipSkills: values[layouts.length + 8] as TooltipSkillCatalog,
-					mapIcons: decodeMapIcons( values[layouts.length + 5] ),
+					mapLayout,
+					mapIcons: decodeMapIcons( values[layouts.length + 5], mapLayout ),
 					actions: values[layouts.length + 7] as readonly ActionSlot[],
 					mapLabels: decodeMapLabels(
 						values[layouts.length + 5],
-						values[layouts.length + 6] as Record<string, string>
+						values[layouts.length + 6] as Record<string, string>,
+						mapLayout
 					),
 					nameRules: (values[layouts.length + 4] as readonly NameRules[])[0]!,
 					guildNameRules: (values[layouts.length + 4] as readonly NameRules[])[1]!,

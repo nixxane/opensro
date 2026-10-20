@@ -50,6 +50,10 @@ export async function buildTextResources() {
 	await writeJson( path.join( publicRoot, "assets", "text", "textzonename.en.json" ), zoneNameCatalog );
 	await writeJson( path.join( publicRoot, "assets", "text", "textdataname.en.json" ), dataNameCatalog );
 	await writeJson( path.join( publicRoot, "assets", "data", "worldmap-localinfo.json" ), worldMapLocalInfo );
+	await writeJson(
+		path.join( publicRoot, "assets", "data", "worldmap-mapinfo.json" ),
+		await buildWorldMapInfoRows( path.join( textDataDir, "worldmap_mapinfo.txt" ) )
+	);
 	await writeJson( path.join( publicRoot, "assets", "data", "npcpos.json" ), npcPosRows );
 	await writeJson( path.join( publicRoot, "assets", "text", "regioncode.json" ), regionCodeCatalog );
 	await writeJson( path.join( publicRoot, "assets", "text", "texthelp.en.json" ), helpTextCatalog );
@@ -226,6 +230,34 @@ async function buildWorldMapLocalInfoRows( sourcePath ) {
 
 	return {
 		format: "sro-worldmap-localinfo",
+		version: 1,
+		sourcePath: toGameRelative( sourcePath ),
+		rows
+	};
+}
+
+/*
+================
+buildWorldMapInfoRows
+
+worldmap_mapinfo.txt -> the map pages the M window draws: one 19-token row per
+page (id, kind, name, picture, sizes, region box, ...). The client reads the
+overview's region box and any town page beyond the five it knows from here, so
+a build that ships another page shows it with no client change.
+================
+*/
+async function buildWorldMapInfoRows( sourcePath ) {
+	const raw = await readText( sourcePath );
+	const rows = [];
+	for ( const record of splitTextDataRecords( raw ) ) {
+		const trimmed = record.trim();
+		if ( !trimmed || trimmed.startsWith( "//" ) ) continue;
+		const columns = record.split( "\t" ).map( ( column ) => column.trim() );
+		if ( columns.length < 19 || !/^\d+$/.test( columns[0] ) || !/^\d+$/.test( columns[1] ) ) continue;
+		rows.push( columns.slice( 0, 19 ) );
+	}
+	return {
+		format: "sro-worldmap-mapinfo",
 		version: 1,
 		sourcePath: toGameRelative( sourcePath ),
 		rows

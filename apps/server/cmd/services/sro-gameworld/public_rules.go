@@ -82,6 +82,7 @@ func publicRules() publicstats.RulesResponse {
 	dropMix, _ := progression.BetaDropMixFromEnv()
 	growth := progression.BetaGrowthFromEnv()
 	betaMastery, _ := progression.BetaMasteryFromEnv()
+	levelCap, _ := progression.LevelCapFromEnv()
 	shopGoods, _ := commerce.ExtraGoodsFromEnv()
 	mallGoods, _ := commerce.MallExtraGoodsFromEnv()
 	rideFactor, rideOn, _ := enterworld.MallRideSpeedFromEnv()
@@ -89,6 +90,10 @@ func publicRules() publicstats.RulesResponse {
 	testKills := settings.Int(tunables.MostWantedTestKills)
 	return publicstats.RulesResponse{
 		Rules: []publicstats.Rule{
+			{Flag: progression.EnvLevelCap, On: levelCap == progression.ExpansionLevelCap,
+				Native: "The character level cap is 90.",
+				Now:    "The character level cap is 110, using the installed v1.150 experience curve.",
+				Why:    "Optional progression for the Alexandria expansion."},
 			{Flag: progression.EnvBetaGrowth, On: progression.BetaGrowthFromEnv().Enabled,
 				Native: "Retail experience, skill point and drop rates.",
 				Now:    "Raised beta rates for experience, skill points and drops.",

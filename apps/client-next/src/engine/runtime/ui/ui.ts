@@ -3789,7 +3789,7 @@ export function createUi(
 		// and automatically switches to Manual Movement State (mapFollow = false).
 		else if ( id.startsWith( "map-town:" ) ) {
 			const page = Number( id.slice( 9 ) );
-			if ( worldMapPages().some( p => p.id === page ) ) {
+			if ( worldMapPages( hud.data()?.mapLayout ).some( p => p.id === page ) ) {
 				mapPage = page;
 				mapFollow = false;
 				mapPan = [ 0, 0 ];
@@ -11510,7 +11510,7 @@ export function createUi(
 				// The current map is a world-lifetime resource, not a popup-lifetime
 				// resource. Closing M must not release the image and flash on the next open.
 				if ( mapFollow && pose ) {
-					mapPage = worldMapPageAt( pose );
+					mapPage = worldMapPageAt( pose, hudData?.mapLayout );
 					mapPan = [ 0, 0 ];
 					mapCenter = null;
 				}
@@ -11584,7 +11584,8 @@ export function createUi(
 						mapPage,
 						[ mapLeft + 6, mapTop + 34, mapWidth - 12, mapHeight - 40 ],
 						mapPan,
-						mapCenter ?? pose
+						mapCenter ?? pose,
+						hudData?.mapLayout
 					);
 				}
 				const mapProjection = pose && mapOpen ?
@@ -11596,7 +11597,8 @@ export function createUi(
 						mapCenter ?? pose,
 						hudData?.mapLabels,
 						hudData?.mapIcons,
-						mapMarkers
+						mapMarkers,
+						hudData?.mapLayout
 					) :
 					null;
 				// MANUAL drags (AUTO swallows them, 57F43D) move the stored position by the
@@ -11633,7 +11635,7 @@ export function createUi(
 					] :
 					[];
 				for ( const { icon, rect: r } of mapOpen ? mapProjection?.hits ?? [] : [] ) {
-					const page = worldMapPages().find( p => p.id === icon.destination );
+					const page = worldMapPages( hudData?.mapLayout ).find( p => p.id === icon.destination );
 					if ( page ) {
 						mapHits.push( {
 							id: "map-town:" + page.id,
@@ -11679,7 +11681,8 @@ export function createUi(
 						mapPan,
 						mapCenter ?? pose,
 						hudData?.mapIcons ?? [],
-						paths
+						paths,
+						hudData?.mapLayout
 					);
 					for ( const row of mapMarkers ) paths.push( row.path );
 					paths.push( MAP_LOCAL_MARKER );
@@ -11691,11 +11694,11 @@ export function createUi(
 					const admission = beginWindow();
 					const mw = mapWidth, mh = mapHeight, mx = mapLeft, my = mapTop;
 					if ( mapFollow && pose ) {
-						mapPage = worldMapPageAt( pose );
+						mapPage = worldMapPageAt( pose, hudData.mapLayout );
 						mapPan = [ 0, 0 ];
 						mapCenter = null;
 					}
-					const page = worldMapPages().find( row => row.id === mapPage ),
+					const page = worldMapPages( hudData.mapLayout ).find( row => row.id === mapPage ),
 						caption = hudCopy( page ? "UIIT_STT_" + page.name : "UIIT_PAG_WORLDMAP" ) || "World Map";
 					windowBox( caption, mx, my, mw, mh );
 					const inner: UiRect = [ mx + 6, my + 34, mw - 12, mh - 40 ];
@@ -24350,7 +24353,7 @@ export function createUi(
 			paths.push( ...windowWarm.paths() );
 			// An open map wants every tile a drag can reveal, even when it opened
 			// before its warm build ran.
-			if ( panel === "Map" ) paths.push( ...worldMapImagePaths( hud.data()?.mapIcons ) );
+			if ( panel === "Map" ) paths.push( ...worldMapImagePaths( hud.data()?.mapIcons, hud.data()?.mapLayout ) );
 			for ( const item of game?.inventory ?? [] ) {
 				const path = iconPath( item.icon );
 				if ( path ) paths.push( path );

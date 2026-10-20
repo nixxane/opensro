@@ -149,6 +149,13 @@ variable "beta_mastery" {
   default = "on"
 }
 
+# Port-only, not native: 110 raises the stopping level on the installed
+# v1.150 curve. Off keeps cap 90; expansion content is enabled separately.
+variable "level_cap" {
+  type    = string
+  default = "off"
+}
+
 # beta_silk is the silk one in-world hour earns into the account's real Item
 # Mall wallet (BUG-062, port-only): earning pauses at 1500, and a new account
 # starts with 300. Earned silk is REAL and survives "off", which only stops
@@ -878,6 +885,7 @@ job "sro-gameworld-__SHARD_ID__" {
         SRO_BETA_STARTER_KIT                    = var.beta_starter_kit
         SRO_BETA_PLAYER_MAP                     = var.beta_player_map
         SRO_BETA_MASTERY                        = var.beta_mastery
+        SRO_LEVEL_CAP                      = var.level_cap
         SRO_BETA_SILK                           = var.beta_silk
         SRO_MAINTENANCE_GATE_PATH               = var.maintenance_gate_path
         SRO_PET_PACING                          = var.pet_pacing

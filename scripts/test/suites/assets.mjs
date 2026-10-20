@@ -15,6 +15,7 @@ export default {
 	runner: "node",
 	files: [
 		"scripts/test/assets/meshCloth.test.mjs",
+		"scripts/test/assets/unboundCharacterVertices.test.mjs",
 		"scripts/test/assets/bsrParticleModifiers.test.mjs",
 		"scripts/test/assets/skillEffectBinding.test.mjs",
 		"scripts/test/assets/assetDeliveryOwnership.test.mjs",

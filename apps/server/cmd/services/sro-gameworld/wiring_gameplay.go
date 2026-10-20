@@ -666,6 +666,9 @@ func (game *gameplayPlane) register(hub *transport.Hub, loadQuests questDefiniti
 		log.Infof("storage: quick moves auto-stack ON (%s)", action.EnvStorageAutoStack)
 	}
 	stats := progression.NewRuntime(game.deps)
+	if err = applyLevelCap(stats); err != nil {
+		return err
+	}
 	stats.MasteryTotalOverride = masteryOverride
 	if masteryOverride != 0 {
 		log.Infof("progression: beta total mastery allowance %d for both races (%s)", masteryOverride, progression.EnvBetaMastery)

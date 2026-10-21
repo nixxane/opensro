@@ -22,11 +22,20 @@ import (
 /*
 ================
 TestCatalogueResolvesOptionalPopulationSetting
+
+resolveShardSettings writes every unset catalogue setting into the process
+environment, so each one is scoped to the subtest first; otherwise the
+deployment defaults leak into the package's later tests.
 ================
 */
 func TestCatalogueResolvesOptionalPopulationSetting(t *testing.T) {
 	for _, value := range []string{"", "off", "on"} {
 		t.Run(value, func(t *testing.T) {
+			for _, s := range shardsettings.Settings {
+				if s.Catalogue {
+					t.Setenv(s.Env, "")
+				}
+			}
 			t.Setenv(monster.EnvCap110Monsters, value)
 			if err := resolveShardSettings(); err != nil {
 				t.Fatal(err)

@@ -52,8 +52,26 @@ func InitCap110(textdataDir string, enabled bool) error {
 	if err != nil {
 		return err
 	}
+	markExpansionBuckets(nextEquipment, equipment)
 	equipment, properties = nextEquipment, nextProperties
 	return nil
+}
+
+/*
+================
+markExpansionBuckets
+
+Flags every bucket of the cap-110 catalog that the native catalog leaves empty
+(degree 10 and up), so selectEquipment keeps monsters of the native levels
+away from it. Buckets the native catalog fills are untouched.
+================
+*/
+func markExpansionBuckets(next, native equipmentCatalog) {
+	for key, bucket := range next.buckets {
+		if native.buckets[key] == nil {
+			bucket.expansionOnly = true
+		}
+	}
 }
 
 /*

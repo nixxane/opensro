@@ -27,6 +27,7 @@ import {
 	decodeMapLabels,
 	decodeMapIcons,
 	decodeWorldMapLayout,
+	nativeLayout,
 	type WorldMapLayout,
 	type MapLabel,
 	type MapIcon
@@ -82,6 +83,8 @@ interface HudData {
 	readonly mapIcons: readonly MapIcon[];
 	readonly actions: readonly ActionSlot[];
 	readonly mapLabels: readonly MapLabel[];
+	readonly expandedMapIcons: readonly MapIcon[];
+	readonly expandedMapLabels: readonly MapLabel[];
 	readonly nameRules: NameRules;
 	// The same filter's guild-name column (790A30).
 	readonly guildNameRules: NameRules;
@@ -342,6 +345,10 @@ export function createHudResources(
 					if ( r ) {
 						changed = true;
 						try {
+							if ( i === layouts.length + 17 && r.kind === "error" && r.absent ) {
+								states[i] = { kind: "ready", value: null };
+								continue;
+							}
 							if ( r.kind !== "bytes" ) throw Error( "HUD resource unavailable: " + paths[i] );
 							const raw = i === layouts.length + 4 || i === layouts.length + 16 ?
 								null :
@@ -429,8 +436,31 @@ export function createHudResources(
 			if ( !data && states.every( s => s.kind === "ready" ) ) {
 				const values = states.map( s => s.kind === "ready" ? s.value : null );
 				// The map pages and overview box first: the icon and label decoders place
-				// world-map rows by the overview's origin.
+				// world-map rows by the overview's origin. Keep both the native and
+				// expanded sets so toggling Experimental options switches cleanly.
+				const nativeMap = nativeLayout();
 				const mapLayout = decodeWorldMapLayout( values[layouts.length + 17] );
+				const mapIcons = decodeMapIcons( values[layouts.length + 5], nativeMap );
+				const mapLabels = decodeMapLabels(
+					values[layouts.length + 5],
+					values[layouts.length + 6] as Record<string, string>,
+					nativeMap
+				);
+				const hasExpandedMap = mapLayout.extra.length > 0 ||
+					mapLayout.overview.left !== nativeMap.overview.left ||
+					mapLayout.overview.top !== nativeMap.overview.top ||
+					mapLayout.overview.columns !== nativeMap.overview.columns ||
+					mapLayout.overview.rows !== nativeMap.overview.rows;
+				const expandedMapIcons = hasExpandedMap ?
+					decodeMapIcons( values[layouts.length + 5], mapLayout ) :
+					mapIcons;
+				const expandedMapLabels = hasExpandedMap ?
+					decodeMapLabels(
+						values[layouts.length + 5],
+						values[layouts.length + 6] as Record<string, string>,
+						mapLayout
+					) :
+					mapLabels;
 				data = {
 					withdrawalPage,
 					stallPricePage,
@@ -447,13 +477,11 @@ export function createHudResources(
 					regionCodes: values[layouts.length + 9] as HudData["regionCodes"],
 					tooltipSkills: values[layouts.length + 8] as TooltipSkillCatalog,
 					mapLayout,
-					mapIcons: decodeMapIcons( values[layouts.length + 5], mapLayout ),
+					mapIcons,
 					actions: values[layouts.length + 7] as readonly ActionSlot[],
-					mapLabels: decodeMapLabels(
-						values[layouts.length + 5],
-						values[layouts.length + 6] as Record<string, string>,
-						mapLayout
-					),
+					mapLabels,
+					expandedMapIcons,
+					expandedMapLabels,
 					nameRules: (values[layouts.length + 4] as readonly NameRules[])[0]!,
 					guildNameRules: (values[layouts.length + 4] as readonly NameRules[])[1]!,
 					skillUi: values[layouts.length + 3] as SkillUi,

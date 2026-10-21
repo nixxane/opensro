@@ -98,7 +98,6 @@ apps/client-next/src/engine/foundation/navigation/ground-pick.ts
 apps/client-next/src/engine/foundation/navigation/navigation-events.ts
 apps/client-next/src/engine/foundation/navigation/owned-start.ts
 apps/client-next/src/engine/foundation/navigation/region-move.ts
-apps/client-next/src/engine/foundation/navigation/spatial-index.ts
 apps/client-next/src/engine/foundation/navigation/vertex-direction.ts
 apps/client-next/src/engine/foundation/rendering/camera-wheel.ts
 apps/client-next/src/engine/foundation/rendering/dock-camera.ts
@@ -348,7 +347,6 @@ apps/client-next/tools/verify-bsr-transforms.mjs
 apps/client-next/tools/verify-deferred-alpha.mjs
 apps/client-next/tools/verify-layout.mjs
 apps/client-next/tools/verify-modifier-keys.mjs
-apps/client-next/tools/verify-ownership.mjs
 apps/server-observatory/public/item-model.js
 apps/server-observatory/public/items.js
 apps/server-observatory/public/model.js

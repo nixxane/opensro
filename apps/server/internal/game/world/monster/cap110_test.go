@@ -7,7 +7,12 @@ package monster
 
 import (
 	"encoding/json"
+	"os"
+	"path/filepath"
+	"strings"
 	"testing"
+
+	"opensro.online/server/internal/game/world/alexandria"
 )
 
 /*
@@ -47,8 +52,22 @@ func TestCap110PopulationJoinsInstalledReferences(t *testing.T) {
 	if _, err := AppendCap110(native, t.TempDir(), false); err != nil {
 		t.Fatalf("off read optional data: %v", err)
 	}
+	t.Setenv(alexandria.EnvAlexandria, "on")
 	if _, err := AppendCap110(native, t.TempDir(), true); err == nil {
 		t.Fatal("on admitted missing input")
+	}
+	// The nests stand in Alexandria's regions: valid data is refused while
+	// the city switch is off.
+	dir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(dir, cap110PopulationFile), data, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := AppendCap110(native, dir, true); err != nil {
+		t.Fatalf("on with the city: %v", err)
+	}
+	t.Setenv(alexandria.EnvAlexandria, "")
+	if _, err := AppendCap110(native, dir, true); err == nil || !strings.Contains(err.Error(), alexandria.EnvAlexandria) {
+		t.Fatalf("on without the city admitted: %v", err)
 	}
 	source.Rows = append(source.Rows, source.Rows[0])
 	data, err = json.Marshal(source)

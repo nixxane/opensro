@@ -389,3 +389,22 @@ func TestOtherEtcGroupsKeepU16Quantity(t *testing.T) {
 		t.Fatalf("body = % X, want % X", got, want)
 	}
 }
+
+/*
+================
+TestGoldHeapExcludesShopTokens
+
+Group 0x280 is one wire width but two meanings: gold heaps (TID 3.3.5.0)
+and the later shop tokens (TID 3.3.5.1), which v1.188's CGItem_IsGold
+(483159..483163) excludes by TID4.
+================
+*/
+func TestGoldHeapExcludesShopTokens(t *testing.T) {
+	const gold, sdToken = 0x0c | 0x60 | 0x280, 0x0c | 0x60 | 0x280 | 0x800
+	if !IsGoldBand(gold) || !IsGoldBand(sdToken) {
+		t.Fatal("both rows carry the group's u32 amount")
+	}
+	if !IsGoldHeap(gold) || IsGoldHeap(sdToken) {
+		t.Fatalf("gold heap: gold %v, token %v; want true, false", IsGoldHeap(gold), IsGoldHeap(sdToken))
+	}
+}

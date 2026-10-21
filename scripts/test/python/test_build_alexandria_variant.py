@@ -159,7 +159,10 @@ class GateTests(unittest.TestCase):
 	def test_gates_links_buildings_and_texts_are_added_to_the_native_tables(self):
 		native, vsro = self.tables()
 		merged, summary = variant.merge_gate_tables(native, vsro, codes=SYNTHETIC_GATES)
-		self.assertEqual(summary, {"gates": ["GATE_SD1", "GATE_SD2"], "links": 4, "buildings": 2, "texts": 3})
+		self.assertEqual(summary, {
+			"gates": ["GATE_SD1", "GATE_SD2"], "links": 4, "buildings": 2, "texts": 3,
+			"buildingCodes": ["STORE_SD_GATE1", "STORE_SD_GATE2"]
+		})
 		codes = [row[2] for row in stage1.table_rows(merged["teleportdata.txt"])]
 		self.assertEqual(codes, ["GATE_CH", "GATE_KT", "GATE_SD1", "GATE_SD2"])
 		self.assertTrue(merged["teleportdata.txt"].startswith(native["teleportdata.txt"][:20]))
@@ -512,3 +515,70 @@ class LinkTests(unittest.TestCase):
 
 if __name__ == "__main__":
 	unittest.main()
+
+
+class GateLevelCapTests(unittest.TestCase):
+	"""SRO_LEVEL_CAP is read with exactly the values the server accepts."""
+
+	def test_native_values_keep_the_v1150_cap(self):
+		for value in ("", "0", "off", "OFF", "false", "90", " 90 "):
+			self.assertEqual(variant.gate_level_cap({variant.LEVEL_CAP_FLAG: value}), variant.NATIVE_LEVEL_CAP, value)
+		self.assertEqual(variant.gate_level_cap({}), variant.NATIVE_LEVEL_CAP)
+
+	def test_110_lifts_the_cap(self):
+		self.assertEqual(variant.gate_level_cap({variant.LEVEL_CAP_FLAG: "110"}), variant.EXPANSION_LEVEL_CAP)
+
+	def test_a_value_the_server_refuses_is_refused(self):
+		for value in ("on", "true", "1", "100", "yes"):
+			with self.assertRaises(ValueError, msg=value):
+				variant.gate_level_cap({variant.LEVEL_CAP_FLAG: value})
+
+
+class AddGatesTests(unittest.TestCase):
+	"""add_gates runs on its own: no module from a later PR, the cap from SRO_LEVEL_CAP."""
+
+	def run_add_gates(self, cap):
+		native_tables, vsro_tables = GateTests().tables()
+		vsro_files = {
+			variant.TEXTDATA + "teleportdata.txt": vsro_tables["teleportdata.txt"],
+			variant.TEXTDATA + "teleportbuilding.txt": vsro_tables["teleportbuilding.txt"],
+			variant.TEXTDATA + "teleportlink.txt": vsro_tables["teleportlink.txt"],
+			variant.TEXTDATA + "textdata_object.txt": vsro_tables["text"]
+		}
+		original_read, original_merge = variant.read_vsro_file, variant.merge_gate_tables
+		original_cap = variant.os.environ.get(variant.LEVEL_CAP_FLAG)
+		with tempfile.TemporaryDirectory() as scratch:
+			native, out = Path(scratch) / "native", Path(scratch) / "out"
+			textdata = native / "Media_extracted" / variant.TEXTDATA
+			textdata.mkdir(parents=True)
+			for name in ("teleportdata.txt", "teleportbuilding.txt", "teleportlink.txt"):
+				(textdata / name).write_bytes(native_tables[name])
+			(textdata / "textdataname.txt").write_bytes(native_tables["text"])
+			variant.read_vsro_file = lambda root, archive, name: vsro_files[name]
+			# merge_gate_tables binds GATE_CODES at definition; route the synthetic gates in.
+			variant.merge_gate_tables = lambda *a, **k: original_merge(*a, **{**k, "codes": SYNTHETIC_GATES})
+			variant.os.environ[variant.LEVEL_CAP_FLAG] = cap
+			try:
+				summary, merged = variant.add_gates(Path(scratch) / "vsro", native, out)
+				written = (out / "Media_extracted" / variant.TEXTDATA / "teleportlink.txt").read_bytes()
+			finally:
+				variant.read_vsro_file, variant.merge_gate_tables = original_read, original_merge
+				if original_cap is None:
+					variant.os.environ.pop(variant.LEVEL_CAP_FLAG, None)
+				else:
+					variant.os.environ[variant.LEVEL_CAP_FLAG] = original_cap
+		return summary, merged, written
+
+	def entry_level(self, merged):
+		rows = stage1.table_rows(merged["teleportlink.txt"])
+		return next(row for row in rows if row[1:3] == ["1", "175"])[6:9]
+
+	def test_add_gates_writes_the_merged_tables_at_the_native_cap(self):
+		summary, merged, written = self.run_add_gates("")
+		self.assertEqual(summary["gates"], ["GATE_SD1", "GATE_SD2"])
+		self.assertEqual(written, merged["teleportlink.txt"])
+		self.assertEqual(self.entry_level(merged), ["1", "90", "999"])
+
+	def test_add_gates_keeps_the_authored_level_under_the_110_cap(self):
+		_, merged, _ = self.run_add_gates("110")
+		self.assertEqual(self.entry_level(merged), ["1", "95", "999"])

@@ -13,6 +13,7 @@ package simulation
 
 import (
 	"encoding/binary"
+	"opensro.online/server/internal/testsupport/tier"
 	"testing"
 
 	"opensro.online/server/internal/testsupport/gamedatatest"
@@ -79,6 +80,7 @@ TestPublishedNPCHeadingCoverage
 ================
 */
 func TestPublishedNPCHeadingCoverage(t *testing.T) {
+	tier.Long(t, "every published NPC placement has a heading")
 	licensed.RequireGameData(t)
 	dir := gamedatatest.TextdataDir(t)
 	roster := LoadNpcWorldRoster(dir)

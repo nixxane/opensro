@@ -97,6 +97,13 @@ PERSISTENT_WORLD = "1"
 # The v1.150 server's level cap (levels.json levelCap). The VSRO links need
 # level 95 for a cap of 110; clamped here so the city stays reachable.
 NATIVE_LEVEL_CAP = 90
+# The server's level-cap flag (progression/levelcap.go LevelCapFromEnv): the
+# gate conditions are clamped to the cap the shard runs, read with the same
+# values the server accepts so build and server can never disagree.
+LEVEL_CAP_FLAG = "SRO_LEVEL_CAP"
+EXPANSION_LEVEL_CAP = 110
+LEVEL_CAP_NATIVE_VALUES = ("", "0", "off", "false", "90")
+LEVEL_CAP_EXPANSION_VALUES = ("110",)
 LINK_COLUMNS = 21
 LINK_KIND_LEVEL = 1
 # The highest condition kind the v1.150 server's portal catalogue accepts.
@@ -339,8 +346,12 @@ def merge_gate_tables(native, vsro, codes=GATE_CODES, level_cap=NATIVE_LEVEL_CAP
 		"teleportbuilding.txt": append_rows(native["teleportbuilding.txt"], buildings),
 		"teleportlink.txt": append_rows(native["teleportlink.txt"], links),
 		"text": append_rows(native["text"], text_rows)
-	}, {"gates": list(codes), "links": len(links), "buildings": len(buildings), "texts": len(text_rows),
-		**({"worldsFlattened": flattened} if flattened else {})}
+	}, {
+		"gates": list(codes), "links": len(links), "buildings": len(buildings), "texts": len(text_rows),
+		# The server hides these structures while SRO_ALEXANDRIA is off (alexandria.go).
+		"buildingCodes": sorted(row[2] for row in buildings),
+		**({"worldsFlattened": flattened} if flattened else {})
+	}
 
 
 #============================================================================
@@ -619,12 +630,28 @@ def build_variant(vsro_root, native, variant, imported_root=None):
 
 
 # ================
+# gate_level_cap
+# ================
+def gate_level_cap(environ=None):
+	"""
+	The level cap the gate conditions are clamped to, from SRO_LEVEL_CAP with
+	the server's own values: 90 unless "110"; anything else is refused, as the
+	server refuses to start on it.
+	"""
+	value = (os.environ if environ is None else environ).get(LEVEL_CAP_FLAG, "").strip().lower()
+	if value in LEVEL_CAP_NATIVE_VALUES:
+		return NATIVE_LEVEL_CAP
+	if value in LEVEL_CAP_EXPANSION_VALUES:
+		return EXPANSION_LEVEL_CAP
+	raise ValueError(f"{LEVEL_CAP_FLAG} must be off, 90 or 110, not {value!r}")
+
+
+# ================
 # add_gates
 # ================
 def add_gates(vsro_root, native, out):
 	"""Write the gate rows into the variant's textdata; returns their summary and tables."""
-	from cap110_monsters import FLAG, MAX_LEVEL
-	level_cap = MAX_LEVEL if os.environ.get(FLAG, "").lower() in stage1.FLAG_ON else NATIVE_LEVEL_CAP
+	level_cap = gate_level_cap()
 	textdata = Path("Media_extracted") / TEXTDATA
 	names = ("teleportdata.txt", "teleportbuilding.txt", "teleportlink.txt")
 	tables = {name: (native / textdata / name).read_bytes() for name in names}

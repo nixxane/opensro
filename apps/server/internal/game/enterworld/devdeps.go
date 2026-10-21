@@ -36,14 +36,15 @@ var (
 	devDefaultMissionChatPath = filepath.Join("config", "mission-chat.json")
 )
 
-// DevPaths names every data source the dev Deps read. RosterPath is the
-// verified server-owned playable-character identity catalogue; browser
-// presentation metadata is deliberately absent from this composition. The remaining
-// zero-value fields take their module-relative defaults. Characters are deliberately NOT a path: the
-// authority store owns them (server.go injects Deps.Characters after Open).
 /*
 ================
 DevPaths
+
+DevPaths names every data source the dev Deps read. RosterPath is the
+verified server-owned playable-character identity catalogue; browser
+presentation metadata is deliberately absent from this composition. The remaining
+zero-value fields take their module-relative defaults. Characters are deliberately NOT a path: the
+authority store owns them (server.go injects Deps.Characters after Open).
 ================
 */
 type DevPaths struct {
@@ -60,11 +61,12 @@ type DevPaths struct {
 	StructureZones string
 }
 
-// DevPathsFromEnv resolves bootstrap-owned optional environment settings
-// around the two required roots supplied by the composition layer.
 /*
 ================
 DevPathsFromEnv
+
+DevPathsFromEnv resolves bootstrap-owned optional environment settings
+around the two required roots supplied by the composition layer.
 ================
 */
 func DevPathsFromEnv(characterAuthorityDir, textdataDir string) DevPaths {
@@ -79,19 +81,20 @@ func DevPathsFromEnv(characterAuthorityDir, textdataDir string) DevPaths {
 	}
 }
 
-// NewDevDeps assembles the server-authoritative Deps from an eagerly loaded
-// semantic textdata view, the character roster, mission chat config and
-// division policy. Browser-owned model/audio/minimap catalogues are not loaded
-// here.
-//
-// Characters and persistence are NOT assembled here: the authority store
-// owns both (ADR-1 D2/D3), and the server wiring injects
-// Deps.Characters / Deps.MutateCharacter / Deps.ResolveDivisionID after
-// store.Open. The server wiring also APPENDS the division ground rows to
-// ObjectListRows after construction (the item lane owns the registry).
 /*
 ================
 NewDevDeps
+
+NewDevDeps assembles the server-authoritative Deps from an eagerly loaded
+semantic textdata view, the character roster, mission chat config and
+division policy. Browser-owned model/audio/minimap catalogues are not loaded
+here.
+
+Characters and persistence are NOT assembled here: the authority store
+owns both (ADR-1 D2/D3), and the server wiring injects
+Deps.Characters / Deps.MutateCharacter / Deps.ResolveDivisionID after
+store.Open. The server wiring also APPENDS the division ground rows to
+ObjectListRows after construction (the item lane owns the registry).
 ================
 */
 func NewDevDeps(paths DevPaths, textdata *TextdataCatalogs) (*Deps, error) {
@@ -109,12 +112,13 @@ func NewDevDeps(paths DevPaths, textdata *TextdataCatalogs) (*Deps, error) {
 	return NewDevDepsWithRoster(paths, textdata, roster)
 }
 
-// NewDevDepsWithRoster assembles gameplay with the already validated roster
-// owned by the process composition root. Character-select projection and
-// enter-world bootstrap must read the same catalogue instance.
 /*
 ================
 NewDevDepsWithRoster
+
+NewDevDepsWithRoster assembles gameplay with the already validated roster
+owned by the process composition root. Character-select projection and
+enter-world bootstrap must read the same catalogue instance.
 ================
 */
 func NewDevDepsWithRoster(paths DevPaths, textdata *TextdataCatalogs, roster *Roster) (*Deps, error) {

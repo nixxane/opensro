@@ -20,6 +20,8 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+
+	"opensro.online/server/internal/game/world/alexandria"
 )
 
 const EnvCap110Monsters = "SRO_CAP110_MONSTERS"
@@ -69,11 +71,16 @@ AppendCap110
 
 Off never reads the optional file. On fails before startup when its data is
 absent or malformed; a partial field population must not reach gameplay.
+The nests stand in Alexandria's regions, which the server hides unless
+SRO_ALEXANDRIA is on (world/alexandria), so on also requires that switch.
 ================
 */
 func AppendCap110(template Template, textdataDir string, enabled bool) (Template, error) {
 	if !enabled {
 		return template, nil
+	}
+	if city, err := alexandria.EnabledFromEnv(); err != nil || !city {
+		return Template{}, fmt.Errorf("%s needs %s on: its nests stand in the Alexandria regions", EnvCap110Monsters, alexandria.EnvAlexandria)
 	}
 	data, err := os.ReadFile(filepath.Join(textdataDir, cap110PopulationFile))
 	if err != nil {

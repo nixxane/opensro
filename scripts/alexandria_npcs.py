@@ -205,7 +205,7 @@ def append_rows(raw, rows):
 	text = stage1.decode_table(raw)
 	if not text.endswith("\n"):
 		text += "\r\n"
-	return b"\xff\xfe" + (text.lstrip("Ã¯Â»Â¿") + table_text(rows)).encode("utf-16-le")
+	return b"\xff\xfe" + (text.lstrip("\ufeff") + table_text(rows)).encode("utf-16-le")
 
 
 # ================
@@ -280,7 +280,7 @@ def skill_effect_section(raw, rows):
 	section_end = next((at for at, line in enumerate(lines) if at > 0 and line.startswith(SECTION_MARK)), len(lines))
 	added = ["\t".join(row[:SKILL_EFFECT_KEPT] + [""] * (SKILL_EFFECT_COLUMNS - SKILL_EFFECT_KEPT)) for row in rows]
 	merged = lines[:section_end] + added + lines[section_end:]
-	return b"\xff\xfe" + "\r\n".join(merged).lstrip("Ã¯Â»Â¿").encode("utf-16-le")
+	return b"\xff\xfe" + "\r\n".join(merged).lstrip("\ufeff").encode("utf-16-le")
 
 
 # ================

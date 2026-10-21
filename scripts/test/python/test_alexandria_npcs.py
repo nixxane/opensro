@@ -286,3 +286,14 @@ class MergeTests(unittest.TestCase):
 
 if __name__ == "__main__":
 	unittest.main()
+
+
+class BomTests(unittest.TestCase):
+	"""A leading U+FEFF is stripped before the UTF-16 prefix is re-added (never a second BOM)."""
+
+	def test_append_rows_never_doubles_the_bom(self):
+		raw = b"\xff\xfe" + "\ufeff1\tA\r\n".encode("utf-16-le")
+		out = npcs.append_rows(raw, [["2", "B"]])
+		self.assertTrue(out.startswith(b"\xff\xfe"))
+		self.assertNotEqual(out[2:4], b"\xff\xfe")
+		self.assertEqual(out[2:].decode("utf-16-le"), "1\tA\r\n2\tB\r\n")

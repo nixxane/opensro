@@ -15,8 +15,28 @@ import (
 	"opensro.online/server/internal/game/enterworld"
 	"opensro.online/server/internal/game/item/alchemy"
 	"opensro.online/server/internal/game/progression"
+	"opensro.online/server/internal/game/world/monster"
 	"opensro.online/server/internal/testsupport/gamedatatest"
 )
+
+/*
+================
+TestCatalogueResolvesOptionalPopulationSetting
+================
+*/
+func TestCatalogueResolvesOptionalPopulationSetting(t *testing.T) {
+	for _, value := range []string{"", "off", "on"} {
+		t.Run(value, func(t *testing.T) {
+			t.Setenv(monster.EnvCap110Monsters, value)
+			if err := resolveShardSettings(); err != nil {
+				t.Fatal(err)
+			}
+			if got := monster.Cap110Enabled(); got != (value == "on") {
+				t.Fatalf("population flag = %t for %q", got, value)
+			}
+		})
+	}
+}
 
 /*
 ================

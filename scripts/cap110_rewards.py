@@ -234,6 +234,7 @@ def add_rewards(vsro_root, native, output, source_root=None):
 			marker.unlink()
 		return {"enabled": False}
 	source_root = Path(source_root or os.environ[monsters.SOURCE_ENV])
+	monsters.require_pinned_export(source_root)
 	# ================
 	# read
 	# ================

@@ -149,6 +149,13 @@ variable "beta_mastery" {
   default = "on"
 }
 
+# Port-only, not native: 110 raises the stopping level on the installed
+# v1.150 curve. Off keeps cap 90; expansion content is enabled separately.
+variable "level_cap" {
+  type    = string
+  default = "off"
+}
+
 # beta_silk is the silk one in-world hour earns into the account's real Item
 # Mall wallet (BUG-062, port-only): earning pauses at 1500, and a new account
 # starts with 300. Earned silk is REAL and survives "off", which only stops
@@ -503,6 +510,11 @@ variable "team_death_revive" {
 # likely. beta_drop_cap keeps a kill to that many ordinary items (a uniform
 # random subset; gold heaps and a unique's prepass are never cut; 0 = no cap).
 # "off" restores the native rates.
+variable "attack_pet_expansion" {
+  type = string
+  default = "off"
+}
+
 variable "beta_growth" {
   type    = string
   default = "on"
@@ -725,10 +737,19 @@ variable "stack_sizes" {
   default = "arrow=2500,bolt=2500,luckypowder=500"
 }
 
-# qinshi_tomb opens Qin-Shi Emperor Tomb Floor 1-4 (79 monster species, 230
-# skills, 1,033 spawn nests, 68 teleport links and 64 walk-in event zones)
-# (port-only, not native; owner decision 2026-10-17). "off" is native.
+# qinshi_tomb opens Qin-Shi Emperor Tomb on all six floors (79 monster
+# species, 230 skills, 1,033 spawn nests, 68 teleport links and 64 walk-in
+# event zones) (port-only, not native; owner decision 2026-10-17, opened
+# in the shard defaults 2026-10-21, GH #1013). "off" is native.
 variable "qinshi_tomb" {
+  type    = string
+  default = "on"
+}
+
+# alexandria registers the Alexandria city a variant game data carries: its
+# regions, gates and NPCs (port-only, not native). "off" is native; "on"
+# refuses to start without the variant's overlay.
+variable "alexandria" {
   type    = string
   default = "off"
 }
@@ -878,6 +899,7 @@ job "sro-gameworld-__SHARD_ID__" {
         SRO_BETA_STARTER_KIT                    = var.beta_starter_kit
         SRO_BETA_PLAYER_MAP                     = var.beta_player_map
         SRO_BETA_MASTERY                        = var.beta_mastery
+        SRO_LEVEL_CAP                      = var.level_cap
         SRO_BETA_SILK                           = var.beta_silk
         SRO_MAINTENANCE_GATE_PATH               = var.maintenance_gate_path
         SRO_PET_PACING                          = var.pet_pacing
@@ -926,6 +948,7 @@ job "sro-gameworld-__SHARD_ID__" {
         SRO_ALCHEMY_RATES                       = var.alchemy_rates
         SRO_ALCHEMY_MAX_PLUS                    = var.alchemy_max_plus
         SRO_TEAM_DEATH_REVIVE                   = var.team_death_revive
+        SRO_ATTACK_PET_EXPANSION                = var.attack_pet_expansion
         SRO_BETA_GROWTH                         = var.beta_growth
         SRO_BETA_SKILL_EXP_RATE                 = var.beta_skill_exp_rate
         SRO_BETA_DROP_RATE                      = var.beta_drop_rate
@@ -953,6 +976,7 @@ job "sro-gameworld-__SHARD_ID__" {
         SRO_BETA_SHOP_ONLY_DEGREE9              = var.beta_shop_only_degree9
         SRO_STACK_SIZES                         = var.stack_sizes
         SRO_QINSHI_TOMB                         = var.qinshi_tomb
+        SRO_ALEXANDRIA                          = var.alexandria
         SRO_PUBLIC_API_ADDR                     = var.public_api_addr
         SRO_PUBLIC_API_TOKEN_PATH               = "${NOMAD_SECRETS_DIR}/public-api-token"
         TRANSPORT_WT_ADDR                       = "${NOMAD_IP_transport}:${NOMAD_PORT_transport}"

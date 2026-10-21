@@ -28,6 +28,7 @@ import (
 	"opensro.online/server/internal/game/progression"
 	"opensro.online/server/internal/game/quest"
 	"opensro.online/server/internal/game/tunables"
+	"opensro.online/server/internal/game/world/alexandria"
 	"opensro.online/server/internal/game/world/monster"
 	"opensro.online/server/internal/game/world/movement"
 	"opensro.online/server/internal/game/world/simulation"
@@ -82,6 +83,8 @@ func publicRules() publicstats.RulesResponse {
 	dropMix, _ := progression.BetaDropMixFromEnv()
 	growth := progression.BetaGrowthFromEnv()
 	betaMastery, _ := progression.BetaMasteryFromEnv()
+	levelCap, _ := progression.LevelCapFromEnv()
+	alexandriaOn, _ := alexandria.EnabledFromEnv()
 	shopGoods, _ := commerce.ExtraGoodsFromEnv()
 	mallGoods, _ := commerce.MallExtraGoodsFromEnv()
 	rideFactor, rideOn, _ := enterworld.MallRideSpeedFromEnv()
@@ -89,6 +92,18 @@ func publicRules() publicstats.RulesResponse {
 	testKills := settings.Int(tunables.MostWantedTestKills)
 	return publicstats.RulesResponse{
 		Rules: []publicstats.Rule{
+			{Flag: progression.EnvLevelCap, On: levelCap == progression.ExpansionLevelCap,
+				Native: "The character level cap is 90.",
+				Now:    "The character level cap is 110, using the installed v1.150 experience curve.",
+				Why:    "Optional progression for the Alexandria expansion."},
+			{Flag: alexandria.EnvAlexandria, On: alexandriaOn,
+				Native: "The world is the v1.150 map; Alexandria is not part of it.",
+				Now:    "The Alexandria city is open, with its gates, ferry and townspeople.",
+				Why:    "Optional Alexandria expansion, imported from a later client."},
+			{Flag: companion.EnvAttackPetExpansion, On: companion.AttackPetExpansionEnabled(),
+				Native: "Growth pets use their original skills and stats.",
+				Now:    "Bear, wolf, penguin and crow have two active and three passive skill rows. Monster equipment drops can also yield same-degree pet gear with up to six bonuses; the database controls its relative drop chance.",
+				Why:    "Owner-approved attack-pet expansion; competitive and instanced worlds keep original stats."},
 			{Flag: progression.EnvBetaGrowth, On: progression.BetaGrowthFromEnv().Enabled,
 				Native: "Retail experience, skill point and drop rates.",
 				Now:    "Raised beta rates for experience, skill points and drops.",
@@ -324,9 +339,9 @@ func publicRules() publicstats.RulesResponse {
 					settings.Int(tunables.TradeJobHunterPercentPerTrader), settings.Int(tunables.TradeJobHunterPercentCap)),
 				Why: "Requested for the beta, so traders and hunters gain from escorting each other; the original returns with one setting."},
 			{Flag: monster.EnvQinShiTomb, On: monster.QinShiTombFromEnv(),
-				Native: "Qin-Shi Emperor Tomb has its geometry and entrance in the v1.150 client, without Floor 1-4 monster spawns or walk-in gates.",
-				Now:    "Qin-Shi Emperor Tomb Floor 1-4 monsters, skills and walk-in gates are active.",
-				Why:    "Opens the Jangan tomb dungeon shipped in the v1.150 client assets; the original returns with one setting."},
+				Native: "Qin-Shi Emperor Tomb has its geometry and entrance in the v1.150 client, without monster spawns or walk-in gates; its door moves nobody.",
+				Now:    "Qin-Shi Emperor Tomb is open on all six floors: its door by Jangan admits players of level 70 and above, its gates move between floors, and its monsters are awake.",
+				Why:    "Opens the Jangan tomb dungeon shipped in the v1.150 client assets (GH #1013); the original returns with one setting."},
 		},
 		Deviations: []publicstats.Deviation{
 			{Title: "Storage Ctrl+click",

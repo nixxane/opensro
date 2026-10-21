@@ -8,6 +8,7 @@ import { iterateTextDataLines, readLocalizedTextDataRowsSync, stripFullLineComme
 import { completeItemText, ITEM_TEXT_COMPLETIONS } from "./itemTextCompletions.mjs";
 import { assertItemNameCoverage } from "./itemNameCoverage.mjs";
 import { assertEnglishCompletionCoverage, completedEnglish, ENGLISH_COMPLETION_FILES } from "./englishCompletions.mjs";
+import { EXPANDED_BUILD } from "../../lib/expandedBuild.mjs";
 
 export async function buildTextResources() {
 	assertTextEnglishCoverage();
@@ -50,10 +51,12 @@ export async function buildTextResources() {
 	await writeJson( path.join( publicRoot, "assets", "text", "textzonename.en.json" ), zoneNameCatalog );
 	await writeJson( path.join( publicRoot, "assets", "text", "textdataname.en.json" ), dataNameCatalog );
 	await writeJson( path.join( publicRoot, "assets", "data", "worldmap-localinfo.json" ), worldMapLocalInfo );
-	await writeJson(
-		path.join( publicRoot, "assets", "data", "worldmap-mapinfo.json" ),
-		await buildWorldMapInfoRows( path.join( textDataDir, "worldmap_mapinfo.txt" ) )
-	);
+	if ( EXPANDED_BUILD ) {
+		await writeJson(
+			path.join( publicRoot, "assets", "data", "worldmap-mapinfo.json" ),
+			await buildWorldMapInfoRows( path.join( textDataDir, "worldmap_mapinfo.txt" ) )
+		);
+	}
 	await writeJson( path.join( publicRoot, "assets", "data", "npcpos.json" ), npcPosRows );
 	await writeJson( path.join( publicRoot, "assets", "text", "regioncode.json" ), regionCodeCatalog );
 	await writeJson( path.join( publicRoot, "assets", "text", "texthelp.en.json" ), helpTextCatalog );

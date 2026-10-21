@@ -3789,7 +3789,8 @@ export function createUi(
 		// and automatically switches to Manual Movement State (mapFollow = false).
 		else if ( id.startsWith( "map-town:" ) ) {
 			const page = Number( id.slice( 9 ) );
-			if ( worldMapPages( hud.data()?.mapLayout ).some( p => p.id === page ) ) {
+			const mapLayout = experimental.state().saved.expandedWorldMap ? hud.data()?.mapLayout : undefined;
+			if ( worldMapPages( mapLayout ).some( p => p.id === page ) ) {
 				mapPage = page;
 				mapFollow = false;
 				mapPan = [ 0, 0 ];
@@ -11509,8 +11510,14 @@ export function createUi(
 				}
 				// The current map is a world-lifetime resource, not a popup-lifetime
 				// resource. Closing M must not release the image and flash on the next open.
-				if ( mapFollow && pose ) {
-					mapPage = worldMapPageAt( pose, hudData?.mapLayout );
+				const expandedMap = experimental.state().saved.expandedWorldMap;
+				const mapLayout = expandedMap ? hudData?.mapLayout : undefined;
+				const mapIcons = expandedMap ? hudData?.expandedMapIcons : hudData?.mapIcons;
+				const mapLabels = expandedMap ? hudData?.expandedMapLabels : hudData?.mapLabels;
+				if (
+					(mapFollow && pose) || (mapPage !== 0 && !worldMapPages( mapLayout ).some( p => p.id === mapPage ))
+				) {
+					mapPage = pose ? worldMapPageAt( pose, mapLayout ) : 0;
 					mapPan = [ 0, 0 ];
 					mapCenter = null;
 				}
@@ -11585,7 +11592,7 @@ export function createUi(
 						[ mapLeft + 6, mapTop + 34, mapWidth - 12, mapHeight - 40 ],
 						mapPan,
 						mapCenter ?? pose,
-						hudData?.mapLayout
+						mapLayout
 					);
 				}
 				const mapProjection = pose && mapOpen ?
@@ -11595,10 +11602,10 @@ export function createUi(
 						[ mapLeft + 6, mapTop + 34, mapWidth - 12, mapHeight - 40 ],
 						mapPan,
 						mapCenter ?? pose,
-						hudData?.mapLabels,
-						hudData?.mapIcons,
+						mapLabels,
+						mapIcons,
 						mapMarkers,
-						hudData?.mapLayout
+						mapLayout
 					) :
 					null;
 				// MANUAL drags (AUTO swallows them, 57F43D) move the stored position by the
@@ -11635,7 +11642,7 @@ export function createUi(
 					] :
 					[];
 				for ( const { icon, rect: r } of mapOpen ? mapProjection?.hits ?? [] : [] ) {
-					const page = worldMapPages( hudData?.mapLayout ).find( p => p.id === icon.destination );
+					const page = worldMapPages( mapLayout ).find( p => p.id === icon.destination );
 					if ( page ) {
 						mapHits.push( {
 							id: "map-town:" + page.id,
@@ -11655,7 +11662,8 @@ export function createUi(
 							clip,
 							pan: mapPan,
 							center: mapCenter ?? pose,
-							points: game?.reverseMapPoints ?? []
+							points: game?.reverseMapPoints ?? [],
+							layout: mapLayout
 						} )
 					) {
 						mapImages.push( {
@@ -11680,9 +11688,9 @@ export function createUi(
 						[ mapLeft + 6, mapTop + 34, mapWidth - 12, mapHeight - 40 ],
 						mapPan,
 						mapCenter ?? pose,
-						hudData?.mapIcons ?? [],
+						mapIcons ?? [],
 						paths,
-						hudData?.mapLayout
+						mapLayout
 					);
 					for ( const row of mapMarkers ) paths.push( row.path );
 					paths.push( MAP_LOCAL_MARKER );
@@ -11694,11 +11702,11 @@ export function createUi(
 					const admission = beginWindow();
 					const mw = mapWidth, mh = mapHeight, mx = mapLeft, my = mapTop;
 					if ( mapFollow && pose ) {
-						mapPage = worldMapPageAt( pose, hudData.mapLayout );
+						mapPage = worldMapPageAt( pose, mapLayout );
 						mapPan = [ 0, 0 ];
 						mapCenter = null;
 					}
-					const page = worldMapPages( hudData.mapLayout ).find( row => row.id === mapPage ),
+					const page = worldMapPages( mapLayout ).find( row => row.id === mapPage ),
 						caption = hudCopy( page ? "UIIT_STT_" + page.name : "UIIT_PAG_WORLDMAP" ) || "World Map";
 					windowBox( caption, mx, my, mw, mh );
 					const inner: UiRect = [ mx + 6, my + 34, mw - 12, mh - 40 ];
@@ -24353,7 +24361,15 @@ export function createUi(
 			paths.push( ...windowWarm.paths() );
 			// An open map wants every tile a drag can reveal, even when it opened
 			// before its warm build ran.
-			if ( panel === "Map" ) paths.push( ...worldMapImagePaths( hud.data()?.mapIcons, hud.data()?.mapLayout ) );
+			if ( panel === "Map" ) {
+				const expandedMap = experimental.state().saved.expandedWorldMap;
+				paths.push(
+					...worldMapImagePaths(
+						expandedMap ? hud.data()?.expandedMapIcons : hud.data()?.mapIcons,
+						expandedMap ? hud.data()?.mapLayout : undefined
+					)
+				);
+			}
 			for ( const item of game?.inventory ?? [] ) {
 				const path = iconPath( item.icon );
 				if ( path ) paths.push( path );

@@ -122,9 +122,13 @@ loadPortalCatalog
 */
 func loadPortalCatalog(dir string) (*portalCatalog, error) {
 	key := texttable.Fingerprint(filepath.Join(dir, "teleportbuilding.txt"),
-		filepath.Join(dir, "teleportdata.txt"), filepath.Join(dir, "teleportlink.txt"))
+		filepath.Join(dir, "teleportdata.txt"), filepath.Join(dir, "teleportlink.txt"),
+		filepath.Join(dir, alexandria.OverlayFile))
 	if monster.QinShiTombFromEnv() {
 		key += "+qinshi_tomb"
+	}
+	if on, _ := alexandria.EnabledFromEnv(); on {
+		key += "+alexandria"
 	}
 	parsed := portalCatalogParses.Get(key, func() *portalCatalogParse {
 		catalog, err := parsePortalCatalog(dir)
@@ -134,8 +138,8 @@ func loadPortalCatalog(dir string) (*portalCatalog, error) {
 }
 
 // portalCatalogParse is one immutable reading of the teleport tables; every
-// runtime over the same files and Qin-Shi setting shares it, and nothing
-// writes to a loaded catalog.
+// runtime over the same files, Qin-Shi and Alexandria settings shares it,
+// and nothing writes to a loaded catalog.
 type portalCatalogParse struct {
 	catalog *portalCatalog
 	err     error

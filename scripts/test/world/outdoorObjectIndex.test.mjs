@@ -20,6 +20,8 @@ test("new sectors cannot reuse an index without their navigation objects", () =>
 	assert.equal( outdoorObjectIndexMatchesDefinitions( index, [ tree, gate ] ), false );
 	index.bsr.push( { ...gate, objectFlags: gate.flags } );
 	assert.equal( outdoorObjectIndexMatchesDefinitions( index, [ tree, gate ] ), true );
+	// Removing the extra sectors leaves objects the build no longer uses.
+	assert.equal( outdoorObjectIndexMatchesDefinitions( index, [ tree ] ), false );
 });
 
 test("catalog changes and new placements invalidate the shared object index", () => {

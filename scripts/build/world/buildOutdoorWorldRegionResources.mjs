@@ -683,12 +683,15 @@ objects without changing any builder code or the existing index's shape.
 */
 export function outdoorObjectIndexMatchesDefinitions( index, definitions ) {
 	const resources = new Map( index.bsr.map( ( resource ) => [ resource.objectId, resource ] ) );
-	return resources.size === index.bsr.length && definitions.every( ( definition ) => {
-		const resource = resources.get( definition.objectId );
-		return resource !== undefined && resource.objectFlags === definition.flags &&
-			resource.placementCount === definition.placementCount &&
-			normalizeAssetPath( resource.sourcePath ) === normalizeAssetPath( definition.sourcePath );
-	} );
+	// The same count both ways: an index that still holds the objects of sectors
+	// since removed is as stale as one missing a new object.
+	return resources.size === index.bsr.length && resources.size === definitions.length &&
+		definitions.every( ( definition ) => {
+			const resource = resources.get( definition.objectId );
+			return resource !== undefined && resource.objectFlags === definition.flags &&
+				resource.placementCount === definition.placementCount &&
+				normalizeAssetPath( resource.sourcePath ) === normalizeAssetPath( definition.sourcePath );
+		} );
 }
 
 /*

@@ -328,7 +328,11 @@ def merge_gate_tables(native, vsro, codes=GATE_CODES, level_cap=NATIVE_LEVEL_CAP
 		"teleportbuilding.txt": append_rows(native["teleportbuilding.txt"], buildings),
 		"teleportlink.txt": append_rows(native["teleportlink.txt"], links),
 		"text": append_rows(native["text"], text_rows)
-	}, {"gates": list(codes), "links": len(links), "buildings": len(buildings), "texts": len(text_rows)}
+	}, {
+		"gates": list(codes), "links": len(links), "buildings": len(buildings), "texts": len(text_rows),
+		# The server hides these structures while SRO_ALEXANDRIA is off (alexandria.go).
+		"buildingCodes": sorted(row[2] for row in buildings)
+	}
 
 
 #============================================================================

@@ -159,7 +159,10 @@ class GateTests(unittest.TestCase):
 	def test_gates_links_buildings_and_texts_are_added_to_the_native_tables(self):
 		native, vsro = self.tables()
 		merged, summary = variant.merge_gate_tables(native, vsro, codes=SYNTHETIC_GATES)
-		self.assertEqual(summary, {"gates": ["GATE_SD1", "GATE_SD2"], "links": 4, "buildings": 2, "texts": 3})
+		self.assertEqual(summary, {
+			"gates": ["GATE_SD1", "GATE_SD2"], "links": 4, "buildings": 2, "texts": 3,
+			"buildingCodes": ["STORE_SD_GATE1", "STORE_SD_GATE2"]
+		})
 		codes = [row[2] for row in stage1.table_rows(merged["teleportdata.txt"])]
 		self.assertEqual(codes, ["GATE_CH", "GATE_KT", "GATE_SD1", "GATE_SD2"])
 		self.assertTrue(merged["teleportdata.txt"].startswith(native["teleportdata.txt"][:20]))

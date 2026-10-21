@@ -745,6 +745,14 @@ variable "qinshi_tomb" {
   default = "off"
 }
 
+# alexandria registers the Alexandria city a variant game data carries: its
+# regions, gates and NPCs (port-only, not native). "off" is native; "on"
+# refuses to start without the variant's overlay.
+variable "alexandria" {
+  type    = string
+  default = "off"
+}
+
 # The community site's public read API listener (internal/agent/publicstats):
 # a loopback address, or "off". sro-nomad gives the first shard the default
 # and every other shard "off".
@@ -967,6 +975,7 @@ job "sro-gameworld-__SHARD_ID__" {
         SRO_BETA_SHOP_ONLY_DEGREE9              = var.beta_shop_only_degree9
         SRO_STACK_SIZES                         = var.stack_sizes
         SRO_QINSHI_TOMB                         = var.qinshi_tomb
+        SRO_ALEXANDRIA                          = var.alexandria
         SRO_PUBLIC_API_ADDR                     = var.public_api_addr
         SRO_PUBLIC_API_TOKEN_PATH               = "${NOMAD_SECRETS_DIR}/public-api-token"
         TRANSPORT_WT_ADDR                       = "${NOMAD_IP_transport}:${NOMAD_PORT_transport}"

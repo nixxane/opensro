@@ -193,6 +193,10 @@ var Settings = []Setting{
 	// and walk-in portals (port-only, not native: v1.150 shipped Tomb visual
 	// assets before the Legend IV server tables). "off" is native.
 	{Env: "SRO_QINSHI_TOMB", NomadVar: "qinshi_tomb", Default: "off"},
+	// The Alexandria city of a build_alexandria_variant.py game root: its
+	// regions, gates and NPCs (port-only, not native; internal/game/world/
+	// alexandria). "off" is native and hides them from a variant's data.
+	{Env: "SRO_ALEXANDRIA", NomadVar: "alexandria", Default: "off"},
 }
 
 // NotSettings are the job's other SRO_ variables: what a deployment

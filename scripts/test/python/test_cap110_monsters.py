@@ -4,7 +4,10 @@ test_cap110_monsters.py - reference identity and optional equipment boundaries.
 ===========================================================================
 """
 import copy
+import json
+import tempfile
 import unittest
+from pathlib import Path
 
 import cap110_monsters as monsters
 import cap110_monster_loot as loot
@@ -23,6 +26,21 @@ def skill(identity, code, original=0):
 # Cap110MonstersTest
 # ================
 class Cap110MonstersTest(unittest.TestCase):
+	# ================
+	# test_only_the_pinned_backup_export_is_admitted
+	# ================
+	def test_only_the_pinned_backup_export_is_admitted(self):
+		with tempfile.TemporaryDirectory() as root:
+			summary = Path(root) / "summary.json"
+			summary.write_text(json.dumps({"backup_sha256": monsters.SOURCE_BACKUP_SHA256.upper()}), encoding="utf-8")
+			monsters.require_pinned_export(root)
+			summary.write_text(json.dumps({"backup_sha256": "0" * 64}), encoding="utf-8")
+			with self.assertRaisesRegex(ValueError, monsters.SOURCE_BACKUP_NAME):
+				monsters.require_pinned_export(root)
+			summary.write_text("{}", encoding="utf-8")
+			with self.assertRaisesRegex(ValueError, "records backup none"):
+				monsters.require_pinned_export(root)
+
 	# ================
 	# test_apis_admission_preserves_grade_and_excludes_other_uniques
 	# ================

@@ -835,3 +835,22 @@ So the only client change is the grade-8 entry (unique title, icon, x1 HP). No
 removed because the native client reads HP from the server (it has no such
 default), and the entry is unreachable on a native build (native monster
 references are grades 0 and 3; nests add 1, 4, 5 and 6; none is 8).
+
+## Database export pin, 2026-10-21
+
+Every imported field nest, tactic, monster skill and drop row comes from one
+database export, made from this backup (author, PR #1285, re-hashed
+2026-10-21):
+
+- File: `SRO_VT_SHARD.bak`, 74,291,712 bytes
+- Backup set: `SRO_VT_SHARD-Full Database Backup`, database `SRO_VT_SHARD`,
+  server `VSRO_TESTIN` (SQL Server 2022 backup of a VSRO test shard),
+  taken 2025-04-08 18:18:27
+- SHA-256: `b4d85a043ebce36c8704768dce0dfa63ff9418c8489241d8441b7902e28fa37a`
+
+It is the same VSRO shard the city NPC headings name
+(`npc_headings_alexandria.go`). `cap110_monsters.py` refuses an export whose
+`summary.json` records any other `backup_sha256`
+(`require_pinned_export`); the import marker keeps the per-file hashes of the
+export it used (`snapshotHashes`).
+

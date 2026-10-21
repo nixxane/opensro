@@ -31,6 +31,11 @@ TEXT_ROOT = Path("Media_extracted") / tables.TEXTDATA
 MAX_LEVEL = 110
 APIS_CODENAME = "MOB_SD_APIS"
 APIS_SOURCE_GRADE = 8
+# The VSRO test-shard backup every imported nest, tactic, monster skill and
+# drop row comes from, as the author pinned it (docs/CAP110_PROGRESS.md,
+# "Database export pin"). The export records this hash in summary.json.
+SOURCE_BACKUP_NAME = "SRO_VT_SHARD.bak"
+SOURCE_BACKUP_SHA256 = "b4d85a043ebce36c8704768dce0dfa63ff9418c8489241d8441b7902e28fa37a"
 
 
 # ================
@@ -53,6 +58,21 @@ def outdoor_regions(source_root):
 	spawns = read_json(Path(source_root) / "all-spawns.json")
 	return {(r["region_id_unsigned"] & 255, r["region_id_unsigned"] >> 8) for r in spawns
 		if r["game_world_id"] == 1 and r["service"] == 1 and r["codename"].startswith("MOB_SD_")}
+
+
+# ================
+# require_pinned_export
+#
+# The export must record the pinned backup's hash; one made from another
+# database is refused before anything is staged.
+# ================
+def require_pinned_export(source_root):
+	recorded = str(read_json(Path(source_root) / "summary.json").get("backup_sha256", "")).lower()
+	if recorded != SOURCE_BACKUP_SHA256:
+		raise ValueError(
+			f"database export {source_root} records backup {recorded or 'none'}, "
+			f"not the pinned {SOURCE_BACKUP_NAME} ({SOURCE_BACKUP_SHA256})"
+		)
 
 
 # ================
@@ -232,6 +252,7 @@ def add_monsters(vsro_root, native, output, source_root=None):
 		marker.unlink(missing_ok=True)
 		return {"enabled": False}
 	source_root = Path(source_root or os.environ[SOURCE_ENV])
+	require_pinned_export(source_root)
 	spawns = read_json(source_root / "all-spawns.json")
 	nests = {r["dwNestID"]: r for r in read_json(source_root / "Tab_RefNest.json")}
 	for row in spawns:

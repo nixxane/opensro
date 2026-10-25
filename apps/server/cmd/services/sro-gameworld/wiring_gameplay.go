@@ -45,7 +45,6 @@ import (
 	"opensro.online/server/internal/game/world/alexandria"
 	"opensro.online/server/internal/game/world/monster"
 	"opensro.online/server/internal/game/world/movement"
-	"opensro.online/server/internal/game/world/optionalteleport"
 	"opensro.online/server/internal/game/world/simulation"
 	"opensro.online/server/internal/game/world/worldarea"
 	"opensro.online/server/internal/transport"
@@ -134,20 +133,8 @@ func newGameplayPlane(
 		return nil, fmt.Errorf("portal catalogue: %w", err)
 	}
 	// Port-only, not native: the reverse return scroll's map destinations.
-	if action.ReverseReturnMapFromEnv() {
-		imported, err := optionalteleport.Load(devPaths.TextdataDir,
-			optionalteleport.Options{QinShiTomb: monster.QinShiTombFromEnv()})
-		if err != nil {
-			return nil, fmt.Errorf("reverse return map: %w", err)
-		}
-		items.ConfigureReverseReturnMap(true, imported)
-		deps.ReverseMapImported = items.ReverseReturnMapImported()
-		source := "inferred"
-		if deps.ReverseMapImported {
-			source = "imported " + optionalteleport.File
-		}
-		log.Infof("reverse return: map destinations ON (%s), %d %s points of %d rows", action.EnvReverseReturnMap,
-			len(items.ReverseReturnMapPoints()), source, len(imported))
+	if err := configureReverseReturnMap(items, deps, devPaths.TextdataDir); err != nil {
+		return nil, err
 	}
 	// One clock for the bootstrap and the tick sweep, read through the runtime
 	// so a swapped clock reaches both; world entry hands re-raised pet-skill

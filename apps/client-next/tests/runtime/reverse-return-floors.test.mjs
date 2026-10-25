@@ -4,9 +4,10 @@
 reverse-return-floors.test.mjs - the imported table's dungeon entrances
 
 Port-only, not native. An imported VSRO table publishes dungeon entrances
-that list their floors. The decoder checks the floors, a use may name a
-floor or a field point but never an entrance, and the reverse return HUD
-opens an entrance's floor list while the map holds the scroll.
+that list their floors, numbered after the points (the server keeps the
+points 1..n). The decoder checks the floors, a use may name a floor or a
+field point but never an entrance, and the reverse return HUD opens an
+entrance's floor list while the map holds the scroll.
 
 ===========================================================================
 */
@@ -24,15 +25,15 @@ const REVERSE_SCROLL = 3 << 2 | 3 << 5 | 3 << 7 | 3 << 11;
 const LOCAL_GID = 77;
 const SLOT = 21;
 
-const JANGAN = { id: 26, name: "Jangan", regionId: 25000, x: 995, y: -32, z: 1132 };
+const JANGAN = { id: 1, name: "Jangan", regionId: 25000, x: 995, y: -32, z: 1132 };
 const CAVE = {
-	id: 29,
+	id: 2,
 	name: "Okmungwan Field",
 	regionId: 27027,
 	x: 1814,
 	y: 452,
 	z: 1834,
-	floors: [ { id: 30, name: "Donwhang Stone Cave" } ]
+	floors: [ { id: 3, name: "Donwhang Stone Cave" } ]
 };
 
 /*
@@ -59,12 +60,12 @@ function worldView( points ) {
 
 test("an entrance's floors decode and only floors or field points are destinations", () => {
 	const points = decodeReverseMapPoints( [ JANGAN, CAVE ] );
-	assert.deepEqual( points[1].floors, [ { id: 30, name: "Donwhang Stone Cave" } ] );
+	assert.deepEqual( points[1].floors, [ { id: 3, name: "Donwhang Stone Cave" } ] );
 	assert.equal( points[0].floors, undefined );
-	assert.equal( reverseMapDestination( points, 26 ), true );
-	assert.equal( reverseMapDestination( points, 30 ), true );
-	assert.equal( reverseMapDestination( points, 29 ), false );
-	for ( const floors of [ [], [ { id: 0, name: "x" } ], [ { id: 30, name: 5 } ], "floors" ] ) {
+	assert.equal( reverseMapDestination( points, 1 ), true );
+	assert.equal( reverseMapDestination( points, 3 ), true );
+	assert.equal( reverseMapDestination( points, 2 ), false );
+	for ( const floors of [ [], [ { id: 2, name: "x" } ], [ { id: 3, name: 5 } ], "floors" ] ) {
 		assert.throws( () => decodeReverseMapPoints( [ { ...CAVE, floors } ] ) );
 	}
 });
@@ -78,21 +79,21 @@ test("the map's entrance opens its floor list and a floor answers the scroll", (
 		LOCAL_GID
 	);
 	// Before the box hands the scroll to the map, no entrance opens.
-	assert.equal( hud.openEntrance( 29, view ), false );
+	assert.equal( hud.openEntrance( 2, view ), false );
 	assert.equal( hud.openMap( view ), true );
-	assert.equal( hud.openEntrance( 26, view ), false, "a field point lists no floors" );
-	assert.equal( hud.openEntrance( 29, view ), true );
-	assert.equal( hud.entrance( view )?.id, 29 );
-	assert.equal( hud.choosePoint( 29, view ), null, "the entrance itself is not a destination" );
+	assert.equal( hud.openEntrance( 1, view ), false, "a field point lists no floors" );
+	assert.equal( hud.openEntrance( 2, view ), true );
+	assert.equal( hud.entrance( view )?.id, 2 );
+	assert.equal( hud.choosePoint( 2, view ), null, "the entrance itself is not a destination" );
 	hud.closeEntrance();
 	assert.equal( hud.entrance( view ), null );
 	assert.equal( hud.mapping(), true, "Cancel leaves the scroll waiting on the map" );
-	hud.openEntrance( 29, view );
-	assert.deepEqual( hud.choosePoint( 30, view ), {
+	hud.openEntrance( 2, view );
+	assert.deepEqual( hud.choosePoint( 3, view ), {
 		kind: "item-use",
 		slot: SLOT,
 		reverseChoice: REVERSE_RETURN_MAP,
-		reverseMapPoint: 30
+		reverseMapPoint: 3
 	} );
 	assert.equal( hud.entrance( view ), null );
 	assert.equal( hud.mapping(), false );

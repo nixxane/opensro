@@ -159,14 +159,14 @@ func NewBrowserReferences(sources BrowserReferenceSources) (*BrowserReferences, 
 		}
 		objectIDs[row.RefObjID] = true
 	}
+	points := uint32(len(sources.ReverseMapPoints))
 	for index, point := range sources.ReverseMapPoints {
-		// Ids ascend: 1..n for the inferred table, the imported table's own.
-		ascending := point.ID != 0 && (index == 0 || point.ID > sources.ReverseMapPoints[index-1].ID)
-		if !ascending || len(point.Name) > maxReverseMapNameBytes {
+		if point.ID != uint32(index+1) || len(point.Name) > maxReverseMapNameBytes {
 			return nil, fmt.Errorf("invalid reverse map point %d", point.ID)
 		}
+		// Floors are numbered after the points (action/reversemap.go).
 		for _, floor := range point.Floors {
-			if floor.ID == 0 || len(floor.Name) > maxReverseMapNameBytes {
+			if floor.ID <= points || len(floor.Name) > maxReverseMapNameBytes {
 				return nil, fmt.Errorf("invalid reverse map floor %d of point %d", floor.ID, point.ID)
 			}
 		}

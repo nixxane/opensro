@@ -185,8 +185,8 @@ func TestReverseMapTableFromShippedData(t *testing.T) {
 ================
 importedReverseMap
 
-Two imported points with the VSRO table's sparse ids: an open field town
-and a level-95 band.
+Two imported points with the VSRO table's sparse ids (26 and 39): an open
+field town and a level-95 band.
 ================
 */
 func importedReverseMap() []optionalteleport.Point {
@@ -198,26 +198,27 @@ func importedReverseMap() []optionalteleport.Point {
 
 /*
 ================
-TestReverseMapImportedTableKeepsItsOwnIDs
+TestReverseMapImportedTableIsPublishedDense
 
-On, an imported table replaces the inferred one and publishes its own
-ids; a use names one of them and travels there.
+On, an imported table replaces the inferred one under public ids 1..n,
+whatever its own ids, so a tab that decodes only 1..n keeps working; a use
+names a public id and travels to its row.
 ================
 */
-func TestReverseMapImportedTableKeepsItsOwnIDs(t *testing.T) {
+func TestReverseMapImportedTableIsPublishedDense(t *testing.T) {
 	rt, c, clock := reverseReturnFixture(t)
 	rt.ConfigureReverseReturnMap(true, importedReverseMap())
 	points := rt.ReverseReturnMapPoints()
-	if len(points) != 2 || points[0].ID != 26 || points[1].ID != 39 || points[0].Name != "Jangan" {
-		t.Fatalf("published points %+v, want the imported ids 26 and 39", points)
+	if len(points) != 2 || points[0].ID != 1 || points[1].ID != 2 || points[0].Name != "Jangan" {
+		t.Fatalf("published points %+v, want Jangan and Alexandria as 1 and 2", points)
 	}
-	for _, id := range []uint32{1, 25, 27} {
+	for _, id := range []uint32{0, 3, 26, 39} {
 		useReverseScroll(rt, c, reverseMapTail(id)...)
 	}
 	if c.MissionInventory[len(c.MissionInventory)-1].StackCount != 2 || c.NativeTeleportMode != 0 {
-		t.Fatal("an id the imported table does not hold spent the scroll")
+		t.Fatal("an id the public table does not hold spent the scroll")
 	}
-	useReverseScroll(rt, c, reverseMapTail(26)...)
+	useReverseScroll(rt, c, reverseMapTail(1)...)
 	if c.MissionInventory[len(c.MissionInventory)-1].StackCount != 1 || c.NativeTeleportMode != 1 {
 		t.Fatal("the imported point did not start the cast")
 	}
@@ -237,7 +238,7 @@ TestReverseMapImportedLevelBandRefusesWithoutSpending
 func TestReverseMapImportedLevelBandRefusesWithoutSpending(t *testing.T) {
 	rt, c, _ := reverseReturnFixture(t)
 	rt.ConfigureReverseReturnMap(true, importedReverseMap())
-	out := useReverseScroll(rt, c, reverseMapTail(39)...)
+	out := useReverseScroll(rt, c, reverseMapTail(2)...)
 	if len(out.Frames) != 1 || !bytes.Equal(out.Frames[0].Payload, wire.EncodeItemUseError(wire.ErrCodeItemUseLevelRequired)) {
 		t.Fatalf("a level-1 use of a level-95 point answered %+v", out.Frames)
 	}
@@ -246,7 +247,7 @@ func TestReverseMapImportedLevelBandRefusesWithoutSpending(t *testing.T) {
 	}
 	level := int64(95)
 	c.Level = &level
-	useReverseScroll(rt, c, reverseMapTail(39)...)
+	useReverseScroll(rt, c, reverseMapTail(2)...)
 	if c.MissionInventory[len(c.MissionInventory)-1].StackCount != 1 || c.NativeTeleportMode != 1 {
 		t.Fatal("a level-95 use of the band was refused")
 	}
@@ -265,7 +266,7 @@ func TestReverseMapOffIgnoresAnImport(t *testing.T) {
 	if points := rt.ReverseReturnMapPoints(); len(points) != 0 {
 		t.Fatalf("off publishes %+v", points)
 	}
-	useReverseScroll(rt, c, reverseMapTail(26)...)
+	useReverseScroll(rt, c, reverseMapTail(1)...)
 	if c.MissionInventory[len(c.MissionInventory)-1].StackCount != 2 || c.NativeTeleportMode != 0 {
 		t.Fatal("choice 7 was accepted with the option off")
 	}
@@ -275,9 +276,10 @@ func TestReverseMapOffIgnoresAnImport(t *testing.T) {
 ================
 TestReverseMapImportedEntranceListsItsFloors
 
-An entrance is published with its floors and is never a destination; a
-floor id takes the player into its dungeon region at the table's
-coordinates.
+The VSRO shape (field point 26, entrance 29, its floor 30) is published as
+points 1 and 2, the entrance listing its floor as 3. The entrance is never
+a destination; the floor takes the player into its dungeon region at the
+table's coordinates.
 ================
 */
 func TestReverseMapImportedEntranceListsItsFloors(t *testing.T) {
@@ -289,15 +291,15 @@ func TestReverseMapImportedEntranceListsItsFloors(t *testing.T) {
 		{ID: 30, Kind: optionalteleport.KindFloor, Group: 1, Name: "Donwhang Stone Cave", RegionID: caveRegion, X: 1115, Z: -935},
 	})
 	points := rt.ReverseReturnMapPoints()
-	if len(points) != 2 || points[1].ID != 29 || len(points[1].Floors) != 1 || points[1].Floors[0].ID != 30 ||
+	if len(points) != 2 || points[1].ID != 2 || len(points[1].Floors) != 1 || points[1].Floors[0].ID != 3 ||
 		!rt.ReverseReturnMapImported() {
-		t.Fatalf("published %+v: want Jangan and the entrance listing floor 30", points)
+		t.Fatalf("published %+v: want Jangan and the entrance listing floor 3", points)
 	}
-	useReverseScroll(rt, c, reverseMapTail(29)...)
+	useReverseScroll(rt, c, reverseMapTail(2)...)
 	if c.MissionInventory[len(c.MissionInventory)-1].StackCount != 2 || c.NativeTeleportMode != 0 {
 		t.Fatal("an entrance id spent the scroll")
 	}
-	useReverseScroll(rt, c, reverseMapTail(30)...)
+	useReverseScroll(rt, c, reverseMapTail(3)...)
 	if c.MissionInventory[len(c.MissionInventory)-1].StackCount != 1 || c.NativeTeleportMode != 1 {
 		t.Fatal("the floor did not start the cast")
 	}

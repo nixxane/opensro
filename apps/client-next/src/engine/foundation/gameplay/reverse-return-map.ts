@@ -32,7 +32,8 @@ const MAX_REVERSE_MAP_FLOORS = 16;
 ================
 ReverseMapFloor
 
-A dungeon floor an entrance lists, by its table id.
+A dungeon floor an entrance lists. The server numbers floors after the
+points (n+1 on), so no floor id is a point id.
 ================
 */
 export interface ReverseMapFloor {
@@ -63,10 +64,10 @@ export interface ReverseMapPoint {
 ================
 decodeReverseMapFloors
 
-A point's floors: absent is a field point.
+A point's floors: absent is a field point. points is the table's length.
 ================
 */
-function decodeReverseMapFloors( value: unknown ): readonly ReverseMapFloor[] | undefined {
+function decodeReverseMapFloors( value: unknown, points: number ): readonly ReverseMapFloor[] | undefined {
 	if ( value === undefined ) return undefined;
 	if ( !Array.isArray( value ) || value.length < 1 || value.length > MAX_REVERSE_MAP_FLOORS ) {
 		throw Error( "Invalid reverse return map floors" );
@@ -74,7 +75,7 @@ function decodeReverseMapFloors( value: unknown ): readonly ReverseMapFloor[] | 
 	return value.map( raw => {
 		const floor = raw as Partial<ReverseMapFloor> | null;
 		if (
-			!floor || typeof floor !== "object" || !Number.isInteger( floor.id ) || floor.id! < 1 ||
+			!floor || typeof floor !== "object" || !Number.isInteger( floor.id ) || floor.id! <= points ||
 			floor.id! > MAX_REVERSE_MAP_ID || typeof floor.name !== "string" || floor.name.length > MAX_REVERSE_MAP_NAME
 		) throw Error( "Invalid reverse return map floor" );
 		return { id: floor.id!, name: floor.name };
@@ -98,8 +99,7 @@ export function reverseMapDestination( points: readonly ReverseMapPoint[], id: n
 decodeReverseMapPoints
 
 The references' reverseMapPoints: absent is the native empty table. IDs
-ascend: the server numbers an inferred table 1..n and keeps an imported
-VSRO table's own ids, which a use sends back.
+run 1..n in order, as the server numbers them.
 ================
 */
 export function decodeReverseMapPoints( value: unknown ): readonly ReverseMapPoint[] {
@@ -107,19 +107,16 @@ export function decodeReverseMapPoints( value: unknown ): readonly ReverseMapPoi
 	if ( !Array.isArray( value ) || value.length > MAX_REVERSE_MAP_POINTS ) {
 		throw Error( "Invalid reverse return map table" );
 	}
-	let previous = 0;
-	return value.map( ( raw ) => {
+	return value.map( ( raw, index ) => {
 		const point = raw as Partial<ReverseMapPoint> | null;
 		if (
-			!point || typeof point !== "object" || !Number.isInteger( point.id ) || point.id! <= previous ||
-			point.id! > MAX_REVERSE_MAP_ID || typeof point.name !== "string" ||
+			!point || typeof point !== "object" || point.id !== index + 1 || typeof point.name !== "string" ||
 			point.name.length > MAX_REVERSE_MAP_NAME || !Number.isInteger( point.regionId ) ||
 			point.regionId! < 1 || isDungeonRegion( point.regionId! ) || point.regionId! > 0xffff ||
 			![ point.x, point.y, point.z ].every( Number.isFinite ) || point.x! < 0 ||
 			point.x! >= REGION_SIZE || point.z! < 0 || point.z! >= REGION_SIZE
 		) throw Error( "Invalid reverse return map point" );
-		previous = point.id!;
-		const floors = decodeReverseMapFloors( point.floors );
+		const floors = decodeReverseMapFloors( point.floors, value.length );
 		return {
 			id: point.id!,
 			name: point.name,

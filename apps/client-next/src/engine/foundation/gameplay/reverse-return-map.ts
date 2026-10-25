@@ -20,6 +20,8 @@ import { isDungeonRegion, REGION_SIZE } from "@/engine/foundation/world/world-sp
 export const REVERSE_RETURN_MAP = 7;
 // MAX_REVERSE_MAP_POINTS bounds the published table (server maxReverseMapPoints).
 const MAX_REVERSE_MAP_POINTS = 4096;
+// MAX_REVERSE_MAP_ID is the largest id the u32 use tail carries.
+const MAX_REVERSE_MAP_ID = 0xffffffff;
 // MAX_REVERSE_MAP_NAME bounds a point name (server maxReverseMapNameBytes).
 const MAX_REVERSE_MAP_NAME = 128;
 
@@ -44,7 +46,8 @@ export interface ReverseMapPoint {
 decodeReverseMapPoints
 
 The references' reverseMapPoints: absent is the native empty table. IDs
-run 1..n in order, as the server numbers them.
+ascend: the server numbers an inferred table 1..n and keeps an imported
+VSRO table's own ids, which a use sends back.
 ================
 */
 export function decodeReverseMapPoints( value: unknown ): readonly ReverseMapPoint[] {
@@ -52,16 +55,19 @@ export function decodeReverseMapPoints( value: unknown ): readonly ReverseMapPoi
 	if ( !Array.isArray( value ) || value.length > MAX_REVERSE_MAP_POINTS ) {
 		throw Error( "Invalid reverse return map table" );
 	}
-	return value.map( ( raw, index ) => {
+	let previous = 0;
+	return value.map( ( raw ) => {
 		const point = raw as Partial<ReverseMapPoint> | null;
 		if (
-			!point || typeof point !== "object" || point.id !== index + 1 || typeof point.name !== "string" ||
+			!point || typeof point !== "object" || !Number.isInteger( point.id ) || point.id! <= previous ||
+			point.id! > MAX_REVERSE_MAP_ID || typeof point.name !== "string" ||
 			point.name.length > MAX_REVERSE_MAP_NAME || !Number.isInteger( point.regionId ) ||
 			point.regionId! < 1 || isDungeonRegion( point.regionId! ) || point.regionId! > 0xffff ||
 			![ point.x, point.y, point.z ].every( Number.isFinite ) || point.x! < 0 ||
 			point.x! >= REGION_SIZE || point.z! < 0 || point.z! >= REGION_SIZE
 		) throw Error( "Invalid reverse return map point" );
-		return { id: point.id, name: point.name, regionId: point.regionId!, x: point.x!, y: point.y!, z: point.z! };
+		previous = point.id!;
+		return { id: point.id!, name: point.name, regionId: point.regionId!, x: point.x!, y: point.y!, z: point.z! };
 	} );
 }
 

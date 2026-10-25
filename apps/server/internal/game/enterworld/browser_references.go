@@ -146,7 +146,9 @@ func NewBrowserReferences(sources BrowserReferenceSources) (*BrowserReferences, 
 		objectIDs[row.RefObjID] = true
 	}
 	for index, point := range sources.ReverseMapPoints {
-		if point.ID != uint32(index+1) || len(point.Name) > maxReverseMapNameBytes {
+		// Ids ascend: 1..n for the inferred table, the imported table's own.
+		ascending := point.ID != 0 && (index == 0 || point.ID > sources.ReverseMapPoints[index-1].ID)
+		if !ascending || len(point.Name) > maxReverseMapNameBytes {
 			return nil, fmt.Errorf("invalid reverse map point %d", point.ID)
 		}
 	}

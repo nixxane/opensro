@@ -338,13 +338,22 @@ test("the worker sends choice 7 and the point id as a u32 after the type word", 
 	gameplay.dispose();
 });
 
-test("the published table is checked: ids in order, field regions, local coordinates", () => {
+test("the published table is checked: ids ascending, field regions, local coordinates", () => {
 	assert.deepEqual( decodeReverseMapPoints( undefined ), [] );
 	const good = { id: 1, name: "Jangan", regionId: 25000, x: 900, y: 0, z: 900 };
 	assert.equal( decodeReverseMapPoints( [ good ] ).length, 1 );
+	// An imported VSRO table keeps its own sparse ids (server optionalteleport).
+	assert.deepEqual(
+		decodeReverseMapPoints( [ { ...good, id: 26 }, { ...good, id: 39 } ] ).map( point => point.id ),
+		[ 26, 39 ]
+	);
+	assert.throws( () => decodeReverseMapPoints( [ { ...good, id: 3 }, { ...good, id: 3 } ] ) );
+	assert.throws( () => decodeReverseMapPoints( [ { ...good, id: 5 }, { ...good, id: 4 } ] ) );
 	for (
 		const bad of [
-			{ ...good, id: 2 },
+			{ ...good, id: 0 },
+			{ ...good, id: 1.5 },
+			{ ...good, id: 2 ** 32 },
 			{ ...good, regionId: 0x8000 | 25000 },
 			{ ...good, x: 1920 },
 			{ ...good, z: -1 },

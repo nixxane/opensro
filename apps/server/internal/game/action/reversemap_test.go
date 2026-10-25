@@ -13,6 +13,7 @@ server resolves it; an unknown or malformed id spends nothing.
 package action
 
 import (
+	"bytes"
 	"testing"
 	"time"
 
@@ -21,6 +22,7 @@ import (
 	"opensro.online/server/internal/game/item/wire"
 	"opensro.online/server/internal/game/world/instance"
 	"opensro.online/server/internal/game/world/monster"
+	"opensro.online/server/internal/game/world/optionalteleport"
 	"opensro.online/server/internal/game/world/simulation"
 	"opensro.online/server/internal/testsupport/gamedatatest"
 	"opensro.online/server/internal/testsupport/licensed"
@@ -55,7 +57,7 @@ func reverseMapFixture(t *testing.T, enabled bool) (*Runtime, *enterworld.Charac
 		4: {id: 4, ref: 40, code: "GATE_FORT", recall: true, fortressGate: true, world: field,
 			spawn: simulation.Spawn{RegionID: reverseMapTestRegion, X: 10, Z: 10}},
 	}
-	rt.ConfigureReverseReturnMap(enabled)
+	rt.ConfigureReverseReturnMap(enabled, nil)
 	return rt, c, clock
 }
 
@@ -160,7 +162,7 @@ func TestReverseMapTableFromShippedData(t *testing.T) {
 		t.Fatal(err)
 	}
 	rt.Monsters = simulation.NewMonsterState(monster.LoadTemplate(dir))
-	rt.ConfigureReverseReturnMap(true)
+	rt.ConfigureReverseReturnMap(true, nil)
 	points := rt.ReverseReturnMapPoints()
 	towns := map[string]bool{}
 	for index, point := range points {
@@ -177,4 +179,94 @@ func TestReverseMapTableFromShippedData(t *testing.T) {
 		t.Fatalf("%d points, towns %v: want the five towns and the unique nests", len(points), towns)
 	}
 	t.Logf("%d reverse return map points", len(points))
+}
+
+/*
+================
+importedReverseMap
+
+Two imported points with the VSRO table's sparse ids: an open field town
+and a level-95 band.
+================
+*/
+func importedReverseMap() []optionalteleport.Point {
+	return []optionalteleport.Point{
+		{ID: 26, Name: "Jangan", RegionID: reverseMapTestRegion, X: 995, Y: -32, Z: 1132},
+		{ID: 39, Name: "Alexandria (South)", RegionID: reverseMapTestRegion, X: 663, Y: 863, Z: 526, LevelMin: 95, LevelMax: 999},
+	}
+}
+
+/*
+================
+TestReverseMapImportedTableKeepsItsOwnIDs
+
+On, an imported table replaces the inferred one and publishes its own
+ids; a use names one of them and travels there.
+================
+*/
+func TestReverseMapImportedTableKeepsItsOwnIDs(t *testing.T) {
+	rt, c, clock := reverseReturnFixture(t)
+	rt.ConfigureReverseReturnMap(true, importedReverseMap())
+	points := rt.ReverseReturnMapPoints()
+	if len(points) != 2 || points[0].ID != 26 || points[1].ID != 39 || points[0].Name != "Jangan" {
+		t.Fatalf("published points %+v, want the imported ids 26 and 39", points)
+	}
+	for _, id := range []uint32{1, 25, 27} {
+		useReverseScroll(rt, c, reverseMapTail(id)...)
+	}
+	if c.MissionInventory[len(c.MissionInventory)-1].StackCount != 2 || c.NativeTeleportMode != 0 {
+		t.Fatal("an id the imported table does not hold spent the scroll")
+	}
+	useReverseScroll(rt, c, reverseMapTail(26)...)
+	if c.MissionInventory[len(c.MissionInventory)-1].StackCount != 1 || c.NativeTeleportMode != 1 {
+		t.Fatal("the imported point did not start the cast")
+	}
+	rt.PushCharacterFrames = func(string, string, []wire.Frame) {}
+	clock.Advance(time.Second)
+	rt.TickHook()(clock.NowMs())
+	if got := missionSpawnFromWorld(c.World.Spawn, simulation.Spawn{}); got.X != 995 || got.Z != 1132 {
+		t.Fatalf("arrived at %+v, not the imported point", got)
+	}
+}
+
+/*
+================
+TestReverseMapImportedLevelBandRefusesWithoutSpending
+================
+*/
+func TestReverseMapImportedLevelBandRefusesWithoutSpending(t *testing.T) {
+	rt, c, _ := reverseReturnFixture(t)
+	rt.ConfigureReverseReturnMap(true, importedReverseMap())
+	out := useReverseScroll(rt, c, reverseMapTail(39)...)
+	if len(out.Frames) != 1 || !bytes.Equal(out.Frames[0].Payload, wire.EncodeItemUseError(wire.ErrCodeItemUseLevelRequired)) {
+		t.Fatalf("a level-1 use of a level-95 point answered %+v", out.Frames)
+	}
+	if c.MissionInventory[len(c.MissionInventory)-1].StackCount != 2 || c.NativeTeleportMode != 0 {
+		t.Fatal("the refused band spent the scroll or started a cast")
+	}
+	level := int64(95)
+	c.Level = &level
+	useReverseScroll(rt, c, reverseMapTail(39)...)
+	if c.MissionInventory[len(c.MissionInventory)-1].StackCount != 1 || c.NativeTeleportMode != 1 {
+		t.Fatal("a level-95 use of the band was refused")
+	}
+}
+
+/*
+================
+TestReverseMapOffIgnoresAnImport
+
+Off is native even when the game data carries the import.
+================
+*/
+func TestReverseMapOffIgnoresAnImport(t *testing.T) {
+	rt, c, _ := reverseReturnFixture(t)
+	rt.ConfigureReverseReturnMap(false, importedReverseMap())
+	if points := rt.ReverseReturnMapPoints(); len(points) != 0 {
+		t.Fatalf("off publishes %+v", points)
+	}
+	useReverseScroll(rt, c, reverseMapTail(26)...)
+	if c.MissionInventory[len(c.MissionInventory)-1].StackCount != 2 || c.NativeTeleportMode != 0 {
+		t.Fatal("choice 7 was accepted with the option off")
+	}
 }

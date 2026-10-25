@@ -23,7 +23,7 @@ family is a new row, never a new script.
 */
 import { execFileSync } from "node:child_process";
 import { readFileSync } from "node:fs";
-import { readdir, readFile, stat } from "node:fs/promises";
+import { readdir, readFile } from "node:fs/promises";
 import path from "node:path";
 import { imagePackGroup, isImageAsset } from "../assetPackOwnership.mjs";
 import { uiImagePreloadReason } from "../shared/uiImageEligibility.mjs";
@@ -72,17 +72,13 @@ import {
 	copyReferencedSkyImages,
 	resolveSkyTextures
 } from "../world/assets/copySkyImages.mjs";
-import { extractedRoot, publicRoot, retailTextdataRoot } from "../world/paths.mjs";
-import { toPublicImagePath } from "../shared/assetPaths.mjs";
+import { publicRoot, retailTextdataRoot } from "../world/paths.mjs";
 import { claimPublicPaths, withPublication } from "../shared/publicationLedger.mjs";
 
 // The CIFButton state family (sub_5419c0) for the quickslot and return-scroll
 // buttons; none of these ships a _disable.
 const BUTTON_STATES = [ "", "_focus", "_press" ];
 const SPRITE_CATALOG = "/assets/cif/cif-sprite-catalog.json";
-// import_vsro_optional_teleport.py's folder and the button stems it copies.
-const VSRO_MARKER_ROOT = "VsroOptionalTeleport_extracted";
-const VSRO_MARKER_STEMS = [ "interface/worldmap/map/xy_returnicon" ];
 const NATIVE_WINDOW_SCRIPT = path.join( import.meta.dirname, "..", "..", "tools", "refresh_native_window_images.py" );
 const FOOTPRINT_DDJ = /^effect\/footstep_(sand|snow)\.ddj$/;
 const WORLD_ROOT = path.join( publicRoot, "assets", "world" );
@@ -676,29 +672,6 @@ export const LOOSE_FAMILIES = {
 		async produce() {
 			const files = await publishImages( worldMapMarkerRuntimeImageReferences );
 			await registerSprites( worldMapMarkerRuntimeImageReferences );
-			return { files };
-		}
-	},
-	// Port-only, not native: the later client's reverse return map point
-	// (xy_returnicon, every state), which v1.150 does not ship.
-	// import_vsro_optional_teleport.py copies it from the operator's VSRO
-	// client; without that import the family publishes nothing and the
-	// client keeps the shipped hunting-point sign.
-	"reverse-return-markers": {
-		kind: "refresh",
-		label: "imported reverse return map markers",
-		packFolder: "reverse-return-markers",
-		defaultGroup: file => imagePackGroup( file ),
-		async produce() {
-			if ( !(await stat( path.join( extractedRoot, VSRO_MARKER_ROOT ) ).catch( () => null ))?.isDirectory() ) {
-				return { files: [], note: "no VSRO optional-teleport import" };
-			}
-			const files = [];
-			for ( const stem of VSRO_MARKER_STEMS ) {
-				for ( const reference of buttonStates( stem ) ) {
-					files.push( await publishConvertedImage( toPublicImagePath( VSRO_MARKER_ROOT, reference ) ) );
-				}
-			}
 			return { files };
 		}
 	},

@@ -5,20 +5,17 @@ reversemap.go - the reverse return scroll's map destinations
 
 Port-only, not native. v1.150's reverse return scroll offers two points,
 the last recall point and the last death point (reversereturn.go). Later
-clients add a third: "move to a location on the map". v1.188's
-CGItemExpendable_UseReverseReturnScroll (4A00C0) reads that as choice 7
-followed by a u32 point id, which it looks up in the optional-teleport
-table (4A1F00 / 4A1ED0). v1.150 ships no such table, so the port builds
-one at boot. When the operator imported the VSRO client's own table
-(world/optionalteleport, scripts/import_vsro_optional_teleport.py), it
-serves those rows, and a use outside a row's level band is refused.
+clients add a third: "move to a location on the map", sent as choice 7
+followed by a u32 point id that the client looks up in its own table of
+destinations. v1.150 ships no such table, so the port builds one at boot. When the operator imported the VSRO client's own
+table (world/optionalteleport, scripts/import_vsro_optional_teleport.py),
+it serves those rows, and a use outside a row's level band is refused.
 Without the import the port infers one.
 
 Either way the public ids run 1..n over the published points, the
 contract every shipped client decodes (an open tab from before the import
-refuses a gap). An imported table's dungeon floors are numbered on from
-n+1 inside their entrances' floor lists. The table's own ids stay on the
-server; the port's client is the only sender of choice 7.
+refuses a gap). The table's own ids stay on the server; the port's client
+is the only sender of choice 7.
 
 INFERENCE for the inferred table: every outdoor town recall gate (the
 points appointed rebirth uses, OperatorTowns) and every outdoor unique
@@ -89,7 +86,7 @@ An imported table (optionalteleport.Load) replaces the inferred one.
 ================
 */
 func (rt *Runtime) ConfigureReverseReturnMap(enabled bool, imported []optionalteleport.Point) {
-	rt.reverseMapPoints, rt.reverseMapRows = nil, nil
+	rt.reverseMapPoints, rt.reverseMapLevels = nil, nil
 	if !enabled {
 		return
 	}
@@ -162,22 +159,13 @@ func (rt *Runtime) ConfigureReverseReturnMap(enabled bool, imported []optionalte
 ================
 useImportedReverseMap
 
-The imported rows in table order. The public table holds the field points
-and the dungeon entrances under ids 1..n; each entrance lists its floors,
-numbered on from n+1. The destinations are the field points and the
-floors, with their level bands. An entrance is never a destination, so a
-client that sends its id is refused and spends nothing.
+The imported field points in table order, published under the dense ids
+1..n with their level bands kept by public id.
 ================
 */
 func (rt *Runtime) useImportedReverseMap(imported []optionalteleport.Point) {
-	rt.reverseMapRows = make(map[uint32]optionalteleport.Point, len(imported))
-	// The published index of each group's entrance (optionalteleport keeps
-	// only entrances with a served floor).
-	groups := map[uint32]int{}
+	rt.reverseMapLevels = make(map[uint32]optionalteleport.Point, len(imported))
 	for _, point := range imported {
-		if point.Kind == optionalteleport.KindFloor {
-			continue
-		}
 		public := enterworld.ReverseMapPoint{Name: point.Name, RegionID: point.RegionID, X: point.X, Y: point.Y, Z: point.Z}
 		if !reverseMapPointValid(public) {
 			continue
@@ -186,36 +174,9 @@ func (rt *Runtime) useImportedReverseMap(imported []optionalteleport.Point) {
 			break
 		}
 		public.ID = uint32(len(rt.reverseMapPoints) + 1)
-		if point.Kind == optionalteleport.KindEntrance {
-			groups[point.Group] = len(rt.reverseMapPoints)
-		} else {
-			rt.reverseMapRows[public.ID] = point
-		}
+		rt.reverseMapLevels[public.ID] = point
 		rt.reverseMapPoints = append(rt.reverseMapPoints, public)
 	}
-	next := uint32(len(rt.reverseMapPoints) + 1)
-	for _, point := range imported {
-		at, listed := groups[point.Group]
-		if point.Kind != optionalteleport.KindFloor || !listed {
-			continue
-		}
-		entrance := &rt.reverseMapPoints[at]
-		entrance.Floors = append(entrance.Floors, enterworld.ReverseMapFloor{ID: next, Name: point.Name})
-		rt.reverseMapRows[next] = point
-		next++
-	}
-}
-
-/*
-================
-ReverseReturnMapImported
-
-True when the public table is the imported VSRO one, whose marker art the
-client draws (the entry bootstrap's reverseMapImported).
-================
-*/
-func (rt *Runtime) ReverseReturnMapImported() bool {
-	return rt.reverseMapRows != nil
 }
 
 /*
@@ -252,26 +213,16 @@ func (rt *Runtime) ReverseReturnMapPoints() []enterworld.ReverseMapPoint {
 ================
 reverseMapDestination
 
-The point an id names, or false for an unknown id, an entrance or a
-disabled option. Every point, a dungeon floor too, is in the field world
-(world 1). An inferred id indexes the public table.
+The field point an id names, or false for an unknown id or a disabled
+option. The public ids index the table: 1..n.
 ================
 */
 func (rt *Runtime) reverseMapDestination(id uint32) (travelPoint, bool) {
-	destination := travelPoint{world: instance.ID(domain.DefaultWorldInstance)}
-	if rt.reverseMapRows != nil {
-		row, ok := rt.reverseMapRows[id]
-		if !ok {
-			return travelPoint{}, false
-		}
-		destination.spawn.RegionID = row.RegionID
-		destination.spawn.X, destination.spawn.Y, destination.spawn.Z = row.X, row.Y, row.Z
-		return destination, true
-	}
 	if id == 0 || int(id) > len(rt.reverseMapPoints) {
 		return travelPoint{}, false
 	}
 	point := rt.reverseMapPoints[id-1]
+	destination := travelPoint{world: instance.ID(domain.DefaultWorldInstance)}
 	destination.spawn.RegionID = point.RegionID
 	destination.spawn.X, destination.spawn.Y, destination.spawn.Z = point.X, point.Y, point.Z
 	return destination, true
@@ -286,7 +237,7 @@ inferred point has none.
 ================
 */
 func (rt *Runtime) reverseMapAdmitsLevel(id uint32, c *enterworld.Character) bool {
-	point, banded := rt.reverseMapRows[id]
+	point, banded := rt.reverseMapLevels[id]
 	if !banded {
 		return true
 	}

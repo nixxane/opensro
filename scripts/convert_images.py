@@ -37,10 +37,6 @@ SOURCE_ROOTS = [
     "Map_extracted",
     "Media_extracted",
     "Particles_extracted",
-    # Port-only, not native: the later client's reverse return map art,
-    # present only after import_vsro_optional_teleport.py (a missing root
-    # is skipped).
-    "VsroOptionalTeleport_extracted",
 ]
 OUTPUT_ROOT = GENERATED_ROOT / "intermediate" / "images"
 MANIFEST_PATH = GENERATED_ROOT / "intermediate" / "image-manifest.csv"

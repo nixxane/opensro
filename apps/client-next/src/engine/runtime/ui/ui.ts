@@ -4622,9 +4622,7 @@ export function createUi(
 					row.id === Number( id.slice( "reverse-map-point:".length ) )
 				) :
 				undefined;
-			// A dungeon entrance lists its floors; a field point asks to confirm.
-			if ( point?.floors ) reverseScrollHud.openEntrance( point.id, view );
-			else if ( point ) {
+			if ( point ) {
 				mapTeleport.choose( {
 					regionId: point.regionId,
 					x: point.x,
@@ -4633,17 +4631,6 @@ export function createUi(
 					reversePoint: point.id
 				} );
 			}
-			dirty = true;
-		} else if ( id.startsWith( "reverse-map-floor:" ) ) {
-			// Port-only: a floor of the open entrance answers the scroll.
-			const command = reverseScrollHud.choosePoint( Number( id.slice( "reverse-map-floor:".length ) ), view );
-			if ( command ) {
-				sendGameplay( command );
-				setPanel( "" );
-			}
-			dirty = true;
-		} else if ( id === "reverse-map-floor-cancel" ) {
-			reverseScrollHud.closeEntrance();
 			dirty = true;
 		} else if ( id.startsWith( "count-job:" ) ) {
 			// 6E2840: a package slot (kind 5) opens its package window.
@@ -15116,50 +15103,6 @@ export function createUi(
 						hudCopy( "UIIT_CTL_CANCEL" )
 					);
 					endWindow( admission, "composite-item" );
-				}
-				// Port-only: a dungeon entrance's floor list, in the reverse return
-				// box's own frame and buttons (INFERENCE: v1.150 has no dungeon map
-				// pages to pick a floor on). A floor answers the scroll; Cancel
-				// returns to the map.
-				const entrance = reverseScrollHud.entrance( next );
-				if ( entrance?.floors ) {
-					controls = [];
-					const admission = beginWindow(), box = reverseReturnLayout( w, h, entrance.floors.length );
-					blocks.push( full );
-					paths.push( ...partyProposalAssets() );
-					quads.push(
-						...frameRing(
-							box.frame,
-							MESSAGE_FRAME,
-							PARTS.map( p => resources.size( MESSAGE_FRAME + p + ".png" ) ),
-							full
-						)
-					);
-					quads.push( ...normalTile( box.background, MESSAGE_TILE, resources.size( MESSAGE_TILE ), full ) );
-					quads.push(
-						...text.quads( hudCopy( "UIIT_STT_CONFIRM_BOX" ), box.title, full, white, {
-							hAlign: 1,
-							vAlign: 0
-						} )
-					);
-					quads.push( ...text.quads( entrance.name, box.question, full, white, { hAlign: 1, vAlign: 0 } ) );
-					entrance.floors.forEach( ( floor, index ) => {
-						authoredLabeledButton(
-							reverseReturnButton( box.points[index]! ),
-							0,
-							0,
-							"reverse-map-floor:" + floor.id,
-							floor.name
-						);
-					} );
-					authoredLabeledButton(
-						reverseReturnButton( box.refuse ),
-						0,
-						0,
-						"reverse-map-floor-cancel",
-						hudCopy( "UIIT_CTL_CANCEL" )
-					);
-					endWindow( admission, "reverse-map-floors" );
 				}
 				const uniqueRank = uniqueRankHud.state();
 				if ( uniqueRank && game ) {

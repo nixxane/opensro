@@ -31,14 +31,14 @@ def utf16_table(rows):
 # teleport_row
 # ================
 def teleport_row(identity, zone, region, map_point="1", group="-1", level_min="0", level_max="0"):
-	return ["1", str(identity), "korean", zone, str(region), "995", "-32", "1132", "1", group, map_point,
+	return ["1", str(identity), "korean", zone, str(region), "100", "5", "200", "1", group, map_point,
 		level_min, level_max, "-1", "xxx", "-1", "xxx", "-1", "xxx"]
 
 
 NAMES = utf16_table([
 	["//Service", "CodeName128", "Korean", "", "", "", "", "", "English"],
 	["1", "SN_ZONE_22001", "k", "", "", "", "", "", "Jangan"],
-	["1", "SN_ZONE_25057", "k", "", "", "", "", "", "Pond Ruins"]
+	["1", "SN_ZONE_25057", "k", "", "", "", "", "", "Test Ruins"]
 ])
 
 
@@ -46,14 +46,14 @@ class ParseTests(unittest.TestCase):
 	def test_rows_are_typed_named_and_sorted_by_id(self):
 		table = utf16_table([
 			teleport_row(26, "SN_ZONE_22001", 25000),
-			teleport_row(4, "SN_ZONE_25057", 26205, level_min="95", level_max="999"),
-			teleport_row(29, "xxx", 27027, map_point="1", group="1")
+			teleport_row(4, "SN_ZONE_25057", 26100, level_min="95", level_max="999"),
+			teleport_row(29, "xxx", 26200, map_point="1", group="1")
 		])
 		rows = importer.parse_optional_teleport(table, NAMES)
 		self.assertEqual([row["id"] for row in rows], [4, 26, 29])
-		self.assertEqual(rows[0]["name"], "Pond Ruins")
+		self.assertEqual(rows[0]["name"], "Test Ruins")
 		self.assertEqual((rows[0]["levelMin"], rows[0]["levelMax"]), (95, 999))
-		self.assertEqual((rows[1]["regionId"], rows[1]["x"], rows[1]["y"], rows[1]["z"]), (25000, 995.0, -32.0, 1132.0))
+		self.assertEqual((rows[1]["regionId"], rows[1]["x"], rows[1]["y"], rows[1]["z"]), (25000, 100.0, 5.0, 200.0))
 		# A code with no English row keeps an empty name; the server decides.
 		self.assertEqual((rows[2]["name"], rows[2]["regionGroup"]), ("", 1))
 
@@ -63,7 +63,7 @@ class ParseTests(unittest.TestCase):
 			importer.parse_optional_teleport(table, NAMES)
 
 	def test_a_repeated_id_refuses_the_table(self):
-		table = utf16_table([teleport_row(1, "SN_ZONE_22001", 25000), teleport_row(1, "SN_ZONE_25057", 26205)])
+		table = utf16_table([teleport_row(1, "SN_ZONE_22001", 25000), teleport_row(1, "SN_ZONE_25057", 26100)])
 		with self.assertRaisesRegex(ValueError, "new positive id"):
 			importer.parse_optional_teleport(table, NAMES)
 

@@ -185,14 +185,14 @@ func TestReverseMapTableFromShippedData(t *testing.T) {
 ================
 importedReverseMap
 
-Two imported points with the VSRO table's sparse ids (26 and 39): an open
-field town and a level-95 band.
+Two imported points with sparse ids (7 and 52): an open field point and a
+level-95 band.
 ================
 */
 func importedReverseMap() []optionalteleport.Point {
 	return []optionalteleport.Point{
-		{ID: 26, Name: "Jangan", RegionID: reverseMapTestRegion, X: 995, Y: -32, Z: 1132},
-		{ID: 39, Name: "Alexandria (South)", RegionID: reverseMapTestRegion, X: 663, Y: 863, Z: 526, LevelMin: 95, LevelMax: 999},
+		{ID: 7, Name: "Test Field", RegionID: reverseMapTestRegion, X: 100, Y: 5, Z: 200},
+		{ID: 52, Name: "Test Band", RegionID: reverseMapTestRegion, X: 300, Y: 9, Z: 400, LevelMin: 95, LevelMax: 999},
 	}
 }
 
@@ -209,10 +209,10 @@ func TestReverseMapImportedTableIsPublishedDense(t *testing.T) {
 	rt, c, clock := reverseReturnFixture(t)
 	rt.ConfigureReverseReturnMap(true, importedReverseMap())
 	points := rt.ReverseReturnMapPoints()
-	if len(points) != 2 || points[0].ID != 1 || points[1].ID != 2 || points[0].Name != "Jangan" {
-		t.Fatalf("published points %+v, want Jangan and Alexandria as 1 and 2", points)
+	if len(points) != 2 || points[0].ID != 1 || points[1].ID != 2 || points[0].Name != "Test Field" {
+		t.Fatalf("published points %+v, want the two points as 1 and 2", points)
 	}
-	for _, id := range []uint32{0, 3, 26, 39} {
+	for _, id := range []uint32{0, 3, 7, 52} {
 		useReverseScroll(rt, c, reverseMapTail(id)...)
 	}
 	if c.MissionInventory[len(c.MissionInventory)-1].StackCount != 2 || c.NativeTeleportMode != 0 {
@@ -225,7 +225,7 @@ func TestReverseMapImportedTableIsPublishedDense(t *testing.T) {
 	rt.PushCharacterFrames = func(string, string, []wire.Frame) {}
 	clock.Advance(time.Second)
 	rt.TickHook()(clock.NowMs())
-	if got := missionSpawnFromWorld(c.World.Spawn, simulation.Spawn{}); got.X != 995 || got.Z != 1132 {
+	if got := missionSpawnFromWorld(c.World.Spawn, simulation.Spawn{}); got.X != 100 || got.Z != 200 {
 		t.Fatalf("arrived at %+v, not the imported point", got)
 	}
 }
@@ -269,44 +269,5 @@ func TestReverseMapOffIgnoresAnImport(t *testing.T) {
 	useReverseScroll(rt, c, reverseMapTail(1)...)
 	if c.MissionInventory[len(c.MissionInventory)-1].StackCount != 2 || c.NativeTeleportMode != 0 {
 		t.Fatal("choice 7 was accepted with the option off")
-	}
-}
-
-/*
-================
-TestReverseMapImportedEntranceListsItsFloors
-
-The VSRO shape (field point 26, entrance 29, its floor 30) is published as
-points 1 and 2, the entrance listing its floor as 3. The entrance is never
-a destination; the floor takes the player into its dungeon region at the
-table's coordinates.
-================
-*/
-func TestReverseMapImportedEntranceListsItsFloors(t *testing.T) {
-	const caveRegion uint16 = 0x8001
-	rt, c, clock := reverseReturnFixture(t)
-	rt.ConfigureReverseReturnMap(true, []optionalteleport.Point{
-		{ID: 26, Kind: optionalteleport.KindField, Name: "Jangan", RegionID: reverseMapTestRegion, X: 995, Z: 1132},
-		{ID: 29, Kind: optionalteleport.KindEntrance, Group: 1, Name: "Okmungwan Field", RegionID: reverseMapTestRegion, X: 900, Z: 900},
-		{ID: 30, Kind: optionalteleport.KindFloor, Group: 1, Name: "Donwhang Stone Cave", RegionID: caveRegion, X: 1115, Z: -935},
-	})
-	points := rt.ReverseReturnMapPoints()
-	if len(points) != 2 || points[1].ID != 2 || len(points[1].Floors) != 1 || points[1].Floors[0].ID != 3 ||
-		!rt.ReverseReturnMapImported() {
-		t.Fatalf("published %+v: want Jangan and the entrance listing floor 3", points)
-	}
-	useReverseScroll(rt, c, reverseMapTail(2)...)
-	if c.MissionInventory[len(c.MissionInventory)-1].StackCount != 2 || c.NativeTeleportMode != 0 {
-		t.Fatal("an entrance id spent the scroll")
-	}
-	useReverseScroll(rt, c, reverseMapTail(3)...)
-	if c.MissionInventory[len(c.MissionInventory)-1].StackCount != 1 || c.NativeTeleportMode != 1 {
-		t.Fatal("the floor did not start the cast")
-	}
-	rt.PushCharacterFrames = func(string, string, []wire.Frame) {}
-	clock.Advance(time.Second)
-	rt.TickHook()(clock.NowMs())
-	if got := missionSpawnFromWorld(c.World.Spawn, simulation.Spawn{}); got.RegionID != caveRegion || got.X != 1115 || got.Z != -935 {
-		t.Fatalf("arrived at %+v, not the cave floor", got)
 	}
 }

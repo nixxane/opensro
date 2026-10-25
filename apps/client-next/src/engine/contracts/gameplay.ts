@@ -799,9 +799,6 @@ export interface GameplayState extends MoverPublication {
 	readonly homingProjectiles?: boolean;
 	// The server's port-only SRO_REVERSE_RETURN_MAP option is on (reverse-return-map.ts).
 	readonly reverseMapPoints?: readonly import("@/engine/foundation/gameplay/reverse-return-map").ReverseMapPoint[];
-	// The points are the imported VSRO table (reverseMapImported): the map
-	// marks them with its art.
-	readonly reverseMapImported?: boolean;
 	readonly abnormalRecords?: readonly import("@/engine/foundation/gameplay/abnormal-snapshot").AbnormalRecord[];
 	readonly selectionDecal?: SelectionDecal | null;
 	readonly notices?: readonly import("@/engine/foundation/gameplay/system-notices").SystemNotice[];

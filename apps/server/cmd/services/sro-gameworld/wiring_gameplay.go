@@ -133,7 +133,7 @@ func newGameplayPlane(
 		return nil, fmt.Errorf("portal catalogue: %w", err)
 	}
 	// Port-only, not native: the reverse return scroll's map destinations.
-	if err := configureReverseReturnMap(items, deps, devPaths.TextdataDir); err != nil {
+	if err := configureReverseReturnMap(items, devPaths.TextdataDir); err != nil {
 		return nil, err
 	}
 	// One clock for the bootstrap and the tick sweep, read through the runtime

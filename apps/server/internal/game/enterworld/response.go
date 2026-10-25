@@ -269,10 +269,6 @@ type BootstrapResult struct {
 	// FastDenReturn tells the client's delay bar that the Bandit Den scroll
 	// counts down half its Param1 (port-only, not native; false is native).
 	FastDenReturn bool
-	// ReverseMapImported tells the client's world map that the reverse
-	// return map points are the imported VSRO table, drawn with its marker
-	// art (port-only, not native; false is native or the inferred table).
-	ReverseMapImported bool
 	// TradeTiers tells the client's TRADESCALE combo to rate a purchase by
 	// gold against the shard's tiers (port-only, not native; false is native).
 	TradeTiers bool
@@ -337,7 +333,6 @@ type bootstrapSuccessView struct {
 	MasteryTotalOverride      int64                    `json:"masteryTotalOverride,omitempty"`
 	StorageAutoStack          bool                     `json:"storageAutoStack,omitempty"`
 	FastDenReturn             bool                     `json:"fastDenReturn,omitempty"`
-	ReverseMapImported        bool                     `json:"reverseMapImported,omitempty"`
 	TradeTiers                bool                     `json:"tradeTiers,omitempty"`
 	JobSuitHidesArmor         bool                     `json:"jobSuitHidesArmor,omitempty"`
 	MoonlitThiefSuit          bool                     `json:"moonlitThiefSuit,omitempty"`
@@ -421,7 +416,6 @@ type bootstrapBlobSuccessView struct {
 	MasteryTotalOverride      int64                    `json:"masteryTotalOverride,omitempty"`
 	StorageAutoStack          bool                     `json:"storageAutoStack,omitempty"`
 	FastDenReturn             bool                     `json:"fastDenReturn,omitempty"`
-	ReverseMapImported        bool                     `json:"reverseMapImported,omitempty"`
 	TradeTiers                bool                     `json:"tradeTiers,omitempty"`
 	JobSuitHidesArmor         bool                     `json:"jobSuitHidesArmor,omitempty"`
 	MoonlitThiefSuit          bool                     `json:"moonlitThiefSuit,omitempty"`
@@ -463,7 +457,6 @@ type bootstrapReferenceBlobSuccessView struct {
 	MasteryTotalOverride      int64                    `json:"masteryTotalOverride,omitempty"`
 	StorageAutoStack          bool                     `json:"storageAutoStack,omitempty"`
 	FastDenReturn             bool                     `json:"fastDenReturn,omitempty"`
-	ReverseMapImported        bool                     `json:"reverseMapImported,omitempty"`
 	TradeTiers                bool                     `json:"tradeTiers,omitempty"`
 	JobSuitHidesArmor         bool                     `json:"jobSuitHidesArmor,omitempty"`
 	MoonlitThiefSuit          bool                     `json:"moonlitThiefSuit,omitempty"`
@@ -537,7 +530,6 @@ func (r *BootstrapResult) blobView() any {
 		MasteryTotalOverride:      r.MasteryTotalOverride,
 		StorageAutoStack:          r.StorageAutoStack,
 		FastDenReturn:             r.FastDenReturn,
-		ReverseMapImported:        r.ReverseMapImported,
 		TradeTiers:                r.TradeTiers,
 		JobSuitHidesArmor:         r.JobSuitHidesArmor,
 		MoonlitThiefSuit:          r.MoonlitThiefSuit,
@@ -593,7 +585,6 @@ func (r *BootstrapResult) referenceBlobView() any {
 		MasteryTotalOverride:      r.MasteryTotalOverride,
 		StorageAutoStack:          r.StorageAutoStack,
 		FastDenReturn:             r.FastDenReturn,
-		ReverseMapImported:        r.ReverseMapImported,
 		TradeTiers:                r.TradeTiers,
 		JobSuitHidesArmor:         r.JobSuitHidesArmor,
 		MoonlitThiefSuit:          r.MoonlitThiefSuit,
@@ -663,7 +654,6 @@ func (r *BootstrapResult) MarshalJSON() ([]byte, error) {
 		MasteryTotalOverride:      r.MasteryTotalOverride,
 		StorageAutoStack:          r.StorageAutoStack,
 		FastDenReturn:             r.FastDenReturn,
-		ReverseMapImported:        r.ReverseMapImported,
 		TradeTiers:                r.TradeTiers,
 		JobSuitHidesArmor:         r.JobSuitHidesArmor,
 		MoonlitThiefSuit:          r.MoonlitThiefSuit,

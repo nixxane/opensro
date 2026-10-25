@@ -20,34 +20,14 @@ import { isDungeonRegion, REGION_SIZE } from "@/engine/foundation/world/world-sp
 export const REVERSE_RETURN_MAP = 7;
 // MAX_REVERSE_MAP_POINTS bounds the published table (server maxReverseMapPoints).
 const MAX_REVERSE_MAP_POINTS = 4096;
-// MAX_REVERSE_MAP_ID is the largest id the u32 use tail carries.
-const MAX_REVERSE_MAP_ID = 0xffffffff;
 // MAX_REVERSE_MAP_NAME bounds a point name (server maxReverseMapNameBytes).
 const MAX_REVERSE_MAP_NAME = 128;
-// MAX_REVERSE_MAP_FLOORS bounds an entrance's floor list (the VSRO table's
-// largest dungeon, the Qin-Shi tomb, has six floors).
-const MAX_REVERSE_MAP_FLOORS = 16;
-
-/*
-================
-ReverseMapFloor
-
-A dungeon floor an entrance lists. The server numbers floors after the
-points (n+1 on), so no floor id is a point id.
-================
-*/
-export interface ReverseMapFloor {
-	readonly id: number;
-	readonly name: string;
-}
 
 /*
 ================
 ReverseMapPoint
 
-One published point. The map paints it from these coordinates. A dungeon
-entrance (an imported VSRO table only) lists its floors and is not a
-destination itself: a use names one of its floors.
+One published destination. The map paints it from these coordinates.
 ================
 */
 export interface ReverseMapPoint {
@@ -57,41 +37,6 @@ export interface ReverseMapPoint {
 	readonly x: number;
 	readonly y: number;
 	readonly z: number;
-	readonly floors?: readonly ReverseMapFloor[];
-}
-
-/*
-================
-decodeReverseMapFloors
-
-A point's floors: absent is a field point. points is the table's length.
-================
-*/
-function decodeReverseMapFloors( value: unknown, points: number ): readonly ReverseMapFloor[] | undefined {
-	if ( value === undefined ) return undefined;
-	if ( !Array.isArray( value ) || value.length < 1 || value.length > MAX_REVERSE_MAP_FLOORS ) {
-		throw Error( "Invalid reverse return map floors" );
-	}
-	return value.map( raw => {
-		const floor = raw as Partial<ReverseMapFloor> | null;
-		if (
-			!floor || typeof floor !== "object" || !Number.isInteger( floor.id ) || floor.id! <= points ||
-			floor.id! > MAX_REVERSE_MAP_ID || typeof floor.name !== "string" || floor.name.length > MAX_REVERSE_MAP_NAME
-		) throw Error( "Invalid reverse return map floor" );
-		return { id: floor.id!, name: floor.name };
-	} );
-}
-
-/*
-================
-reverseMapDestination
-
-Whether a use may name this id: a field point or an entrance's floor,
-never the entrance itself.
-================
-*/
-export function reverseMapDestination( points: readonly ReverseMapPoint[], id: number ): boolean {
-	return points.some( point => point.floors ? point.floors.some( floor => floor.id === id ) : point.id === id );
 }
 
 /*
@@ -116,16 +61,7 @@ export function decodeReverseMapPoints( value: unknown ): readonly ReverseMapPoi
 			![ point.x, point.y, point.z ].every( Number.isFinite ) || point.x! < 0 ||
 			point.x! >= REGION_SIZE || point.z! < 0 || point.z! >= REGION_SIZE
 		) throw Error( "Invalid reverse return map point" );
-		const floors = decodeReverseMapFloors( point.floors, value.length );
-		return {
-			id: point.id!,
-			name: point.name,
-			regionId: point.regionId!,
-			x: point.x!,
-			y: point.y!,
-			z: point.z!,
-			...(floors ? { floors } : {})
-		};
+		return { id: point.id, name: point.name, regionId: point.regionId!, x: point.x!, y: point.y!, z: point.z! };
 	} );
 }
 

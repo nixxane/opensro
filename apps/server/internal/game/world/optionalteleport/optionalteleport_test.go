@@ -16,7 +16,6 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
-	"slices"
 	"strconv"
 	"strings"
 	"testing"
@@ -37,7 +36,7 @@ outdoorRow
 */
 func outdoorRow(id, region int64, name string) importRow {
 	return importRow{Service: 1, ID: id, Zone: "SN_ZONE", Name: name, RegionID: region,
-		X: 995, Y: -32, Z: 1132, WorldID: 1, RegionGroup: -1, MapPoint: 1}
+		X: 100, Y: 5, Z: 200, WorldID: 1, RegionGroup: -1, MapPoint: 1}
 }
 
 /*
@@ -98,7 +97,7 @@ TestNoImportIsTheNativeTable
 ================
 */
 func TestNoImportIsTheNativeTable(t *testing.T) {
-	points, err := Load(writeTextdata(t, nil, map[int64]string{testJangan: "Jangan"}, false), Options{})
+	points, err := Load(writeTextdata(t, nil, map[int64]string{testJangan: "Jangan"}, false))
 	if err != nil || points != nil {
 		t.Fatalf("no import: %+v, %v; want nil", points, err)
 	}
@@ -110,69 +109,26 @@ TestServesOutdoorMapRowsByTheirOwnIDs
 ================
 */
 func TestServesOutdoorMapRowsByTheirOwnIDs(t *testing.T) {
-	flag := outdoorRow(29, testJangan, "Cave flag")
+	flag := outdoorRow(14, testJangan, "Test flag")
 	flag.RegionGroup = 1
-	floor := outdoorRow(30, -32767, "Cave 1F")
+	floor := outdoorRow(15, -32767, "Test floor")
 	floor.MapPoint, floor.RegionGroup, floor.LevelMin, floor.LevelMax = 0, 1, 50, 999
 	retired := outdoorRow(5, testJangan, "Retired")
 	retired.Service = 0
-	unnamedRegion := outdoorRow(7, 26205, "Pond Ruins")
+	unnamedRegion := outdoorRow(6, 26100, "Unnamed Ruins")
 	unnamed := outdoorRow(9, testConstant, "")
-	rows := []importRow{outdoorRow(26, testJangan, "Jangan"), unnamed, flag, floor, retired, unnamedRegion}
+	rows := []importRow{outdoorRow(11, testJangan, "Jangan"), unnamed, flag, floor, retired, unnamedRegion}
 	dir := writeTextdata(t, rows, map[int64]string{testJangan: "Jangan", testConstant: "Constantinople"}, false)
-	points, err := Load(dir, Options{})
+	points, err := Load(dir)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got := ids(points); len(got) != 2 || got[0] != 9 || got[1] != 26 {
-		t.Fatalf("served ids %v, want [9 26]", got)
+	if got := ids(points); len(got) != 2 || got[0] != 9 || got[1] != 11 {
+		t.Fatalf("served ids %v, want [9 11]", got)
 	}
 	// A row without its own English name takes the region's.
-	if points[0].Name != "Constantinople" || points[1].RegionID != testJangan || points[1].X != 995 {
+	if points[0].Name != "Constantinople" || points[1].RegionID != testJangan || points[1].X != 100 {
 		t.Fatalf("points %+v", points)
-	}
-}
-
-/*
-================
-TestDungeonEntrancesListTheirFloors
-
-The VSRO shape: an entrance flag drawn on the map (MapPoint 1, group 1) and
-its floor (MapPoint 0, group 1, a signed dungeon region). The tomb's floors
-follow SRO_QINSHI_TOMB; an entrance without a served floor is dropped.
-================
-*/
-func TestDungeonEntrancesListTheirFloors(t *testing.T) {
-	const (
-		caveRegion = 0x8001
-		tombRegion = 0x8006
-	)
-	caveFlag := outdoorRow(29, testJangan, "")
-	caveFlag.RegionGroup = 1
-	cave := outdoorRow(30, -32767, "Donwhang Stone Cave")
-	cave.MapPoint, cave.RegionGroup, cave.X, cave.Z, cave.LevelMin, cave.LevelMax = 0, 1, 1115, -935, 0, 0
-	tombFlag := outdoorRow(31, testConstant, "")
-	tombFlag.RegionGroup = 2
-	tomb := outdoorRow(32, -32762, "Tomb lv.2")
-	tomb.MapPoint, tomb.RegionGroup, tomb.X, tomb.Z, tomb.LevelMin, tomb.LevelMax = 0, 2, -11719, 5742, 70, 999
-	orphan := outdoorRow(40, -32767, "Orphan floor")
-	orphan.MapPoint, orphan.RegionGroup = 0, 9
-	zones := map[int64]string{testJangan: "Jangan", testConstant: "Constantinople", caveRegion: "Cave", tombRegion: "Tomb B2"}
-	dir := writeTextdata(t, []importRow{caveFlag, cave, tombFlag, tomb, orphan}, zones, false)
-	for _, tc := range []struct {
-		tomb bool
-		want []uint32
-	}{{false, []uint32{29, 30}}, {true, []uint32{29, 30, 31, 32}}} {
-		points, err := Load(dir, Options{QinShiTomb: tc.tomb})
-		if err != nil || !slices.Equal(ids(points), tc.want) {
-			t.Fatalf("tomb %v: %v, %v; want %v", tc.tomb, ids(points), err, tc.want)
-		}
-		if points[0].Kind != KindEntrance || points[0].Group != 1 || points[0].Name != "Jangan" {
-			t.Fatalf("entrance %+v: want group 1 named after its field", points[0])
-		}
-		if points[1].Kind != KindFloor || points[1].RegionID != caveRegion || points[1].X != 1115 || points[1].Z != -935 {
-			t.Fatalf("floor %+v: want the cave region at its dungeon coordinates", points[1])
-		}
 	}
 }
 
@@ -185,9 +141,9 @@ root names it and serves it only while SRO_ALEXANDRIA is on.
 ================
 */
 func TestAlexandriaRowsFollowItsOverlay(t *testing.T) {
-	south := outdoorRow(39, testAlexandria, "Alexandria (South)")
+	south := outdoorRow(52, testAlexandria, "Test Band")
 	south.LevelMin, south.LevelMax = 95, 999
-	rows := []importRow{outdoorRow(26, testJangan, "Jangan"), south}
+	rows := []importRow{outdoorRow(11, testJangan, "Jangan"), south}
 	native := writeTextdata(t, rows, map[int64]string{testJangan: "Jangan"}, false)
 	variant := writeTextdata(t, rows, map[int64]string{testJangan: "Jangan", testAlexandria: "Alexandria"}, true)
 	for _, tc := range []struct {
@@ -195,7 +151,7 @@ func TestAlexandriaRowsFollowItsOverlay(t *testing.T) {
 		want      int
 	}{{native, "on", 1}, {variant, "off", 1}, {variant, "on", 2}} {
 		t.Setenv(alexandria.EnvAlexandria, tc.flag)
-		points, err := Load(tc.dir, Options{})
+		points, err := Load(tc.dir)
 		if err != nil || len(points) != tc.want {
 			t.Fatalf("SRO_ALEXANDRIA=%s: %v, %v; want %d points", tc.flag, ids(points), err, tc.want)
 		}
@@ -224,18 +180,18 @@ TestRefusesAMalformedImport
 func TestRefusesAMalformedImport(t *testing.T) {
 	zones := map[int64]string{testJangan: "Jangan"}
 	repeated := writeTextdata(t, []importRow{outdoorRow(1, testJangan, "A"), outdoorRow(1, testJangan, "B")}, zones, false)
-	if _, err := Load(repeated, Options{}); err == nil {
+	if _, err := Load(repeated); err == nil {
 		t.Fatal("a repeated id was accepted")
 	}
 	empty := writeTextdata(t, []importRow{}, zones, false)
-	if _, err := Load(empty, Options{}); err == nil {
+	if _, err := Load(empty); err == nil {
 		t.Fatal("an import with no rows was accepted")
 	}
 	unknown := writeTextdata(t, nil, zones, false)
 	if err := os.WriteFile(filepath.Join(unknown, File), []byte(`{"format":"`+importFormat+`","rows":[{"extra":1}]}`), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := Load(unknown, Options{}); err == nil {
+	if _, err := Load(unknown); err == nil {
 		t.Fatal("an unknown field was accepted")
 	}
 }

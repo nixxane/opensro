@@ -53,7 +53,6 @@ export const REFRESH_FAMILIES = [
 	"quickslot",
 	"restriction-text",
 	"return-scroll",
-	"reverse-return-markers",
 	"slot-effect",
 	"world-map-markers"
 ];

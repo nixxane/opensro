@@ -88,30 +88,16 @@ ReverseMapPoint
 
 A reverse return map destination (port-only, not native). The browser paints
 it from these coordinates; a use names only its ID, which the server
-resolves (action/reversemap.go). A dungeon entrance lists its floors and is
-not a destination itself: a use names one of its floors.
+resolves (action/reversemap.go).
 ================
 */
 type ReverseMapPoint struct {
-	ID       uint32            `json:"id"`
-	Name     string            `json:"name"`
-	RegionID uint16            `json:"regionId"`
-	X        float64           `json:"x"`
-	Y        float64           `json:"y"`
-	Z        float64           `json:"z"`
-	Floors   []ReverseMapFloor `json:"floors,omitempty"`
-}
-
-/*
-================
-ReverseMapFloor
-
-One dungeon floor an entrance lists, by its table id.
-================
-*/
-type ReverseMapFloor struct {
-	ID   uint32 `json:"id"`
-	Name string `json:"name"`
+	ID       uint32  `json:"id"`
+	Name     string  `json:"name"`
+	RegionID uint16  `json:"regionId"`
+	X        float64 `json:"x"`
+	Y        float64 `json:"y"`
+	Z        float64 `json:"z"`
 }
 
 /*
@@ -159,16 +145,9 @@ func NewBrowserReferences(sources BrowserReferenceSources) (*BrowserReferences, 
 		}
 		objectIDs[row.RefObjID] = true
 	}
-	points := uint32(len(sources.ReverseMapPoints))
 	for index, point := range sources.ReverseMapPoints {
 		if point.ID != uint32(index+1) || len(point.Name) > maxReverseMapNameBytes {
 			return nil, fmt.Errorf("invalid reverse map point %d", point.ID)
-		}
-		// Floors are numbered after the points (action/reversemap.go).
-		for _, floor := range point.Floors {
-			if floor.ID <= points || len(floor.Name) > maxReverseMapNameBytes {
-				return nil, fmt.Errorf("invalid reverse map floor %d of point %d", floor.ID, point.ID)
-			}
 		}
 	}
 	data, err := json.Marshal(struct {

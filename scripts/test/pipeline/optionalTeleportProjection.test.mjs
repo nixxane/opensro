@@ -46,7 +46,7 @@ test("a game root without the import adds no file to the projection", async () =
 test("an import joins the textdata byte for byte", async () => {
 	const document = {
 		format: "opensro-vsro-optional-teleport-v1",
-		rows: [ { id: 26, name: "Jangan", regionId: 25000 } ]
+		rows: [ { id: 11, name: "Jangan", regionId: 25000 } ]
 	};
 	await withBundle( document, async ( bundle, source ) => {
 		await buildOptionalTeleportProjection( bundle, source );

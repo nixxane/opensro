@@ -20,8 +20,6 @@ import (
 	log "github.com/sirupsen/logrus"
 
 	"opensro.online/server/internal/game/action"
-	"opensro.online/server/internal/game/enterworld"
-	"opensro.online/server/internal/game/world/monster"
 	"opensro.online/server/internal/game/world/optionalteleport"
 )
 
@@ -33,21 +31,20 @@ Runs after ConfigurePortals and the monster authority. A malformed import
 refuses the boot rather than falling back to the inferred table silently.
 ================
 */
-func configureReverseReturnMap(items *action.Runtime, deps *enterworld.Deps, textdataDir string) error {
+func configureReverseReturnMap(items *action.Runtime, textdataDir string) error {
 	if !action.ReverseReturnMapFromEnv() {
 		return nil
 	}
-	imported, err := optionalteleport.Load(textdataDir, optionalteleport.Options{QinShiTomb: monster.QinShiTombFromEnv()})
+	imported, err := optionalteleport.Load(textdataDir)
 	if err != nil {
 		return fmt.Errorf("reverse return map: %w", err)
 	}
 	items.ConfigureReverseReturnMap(true, imported)
-	deps.ReverseMapImported = items.ReverseReturnMapImported()
 	source := "inferred"
-	if deps.ReverseMapImported {
+	if len(imported) > 0 {
 		source = "imported " + optionalteleport.File
 	}
-	log.Infof("reverse return: map destinations ON (%s), %d %s points of %d rows", action.EnvReverseReturnMap,
-		len(items.ReverseReturnMapPoints()), source, len(imported))
+	log.Infof("reverse return: map destinations ON (%s), %d %s points", action.EnvReverseReturnMap,
+		len(items.ReverseReturnMapPoints()), source)
 	return nil
 }

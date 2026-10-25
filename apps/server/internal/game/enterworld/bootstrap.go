@@ -307,7 +307,6 @@ func buildCharacterProjection(deps *Deps, divisionID string, character *Characte
 		MasteryTotalOverride: deps.MasteryTotalOverride,
 		StorageAutoStack:     deps.StorageAutoStack,
 		FastDenReturn:        deps.FastDenReturn,
-		ReverseMapImported:   deps.ReverseMapImported,
 		TradeTiers:           deps.TradeTiers,
 		JobSuitHidesArmor:    deps.JobSuitHidesArmor,
 		MoonlitThiefSuit:     deps.MoonlitThiefSuit,

@@ -452,10 +452,8 @@ export function createGameplay(
 	let jobSuitHidesArmor = false;
 	// The server's port-only Moonlit Ash thief suit rule (moonlitThiefSuit).
 	let moonlitThiefSuit = false;
-	// The port-only reverse return map table (reverse-return-map.ts), and
-	// whether it is the imported VSRO one (reverseMapImported).
+	// The port-only reverse return map table (reverse-return-map.ts).
 	let reverseMapPoints: readonly ReverseMapPoint[] = [];
-	let reverseMapImported = false;
 	let warnings = [ false, false ];
 	let options = initialGameOptions();
 	let eligibility = { gm: false, pcRoomEvent: false };
@@ -1605,7 +1603,6 @@ resends nothing. Wiping them here made the next 0x3E58 type-6 row throw
 			tradeTiers = (value as { tradeTiers?: unknown; } | null)?.tradeTiers === true;
 			jobSuitHidesArmor = (value as { jobSuitHidesArmor?: unknown; } | null)?.jobSuitHidesArmor === true;
 			moonlitThiefSuit = (value as { moonlitThiefSuit?: unknown; } | null)?.moonlitThiefSuit === true;
-			reverseMapImported = (value as { reverseMapImported?: unknown; } | null)?.reverseMapImported === true;
 			reverseMapPoints = decodeReverseMapPoints(
 				(value as { reverseMapPoints?: unknown; } | null)?.reverseMapPoints
 			);
@@ -5139,7 +5136,6 @@ The published plane when something changed since the last take, else null.
 				...(moonlitThiefSuit ? { moonlitThiefSuit } : {}),
 				...(homingProjectiles ? { homingProjectiles } : {}),
 				...(reverseMapPoints.length ? { reverseMapPoints } : {}),
-				...(reverseMapPoints.length && reverseMapImported ? { reverseMapImported } : {}),
 				storage: presentedStorage(),
 				playerModels: localPlayerModels(),
 				job,

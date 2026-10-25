@@ -12,18 +12,31 @@ operator imports the VSRO client's refoptionalteleport.txt
 it as textdata/vsro-optional-teleport.json; without the import there is no
 file and the action runtime keeps its inferred table (reversemap.go).
 
-This package owns which rows the port serves: the outdoor map points of the
-loaded world. A row is served when it is in service, in the field world
-(WorldID 1), drawn on the map (MapPoint 1) and not part of a dungeon group
-(RegionIDGroup -1), and its region is an outdoor region the loaded textdata
-names (textzonename) and the Alexandria overlay does not hide. That drops the
-dungeon floors and their entrance flags (the port's map has no dungeon
-destinations), and drops Alexandria's rows unless its regions are loaded and
-SRO_ALEXANDRIA is on.
+This package owns which rows the port serves, all in service and in the
+field world (WorldID 1, which also holds v1.150's dungeons: teleportdata's
+GATE_DUNGEON_DH_OUT and GATE_JINSI_* rows are world 1):
+
+  - a field point: drawn on the map (MapPoint 1), in no dungeon group
+    (RegionIDGroup -1), in an outdoor region;
+  - a dungeon entrance: drawn on the map in a group (RegionIDGroup > 0).
+    VSRO names these rows "flag position only" (rows 29 and 31); they sit
+    where worldmap_instanceinfo puts the dungeon on the world map
+    (Worldmap_DONWHANG, Worldmap_JINSI). An entrance is not a destination;
+  - a dungeon floor: not drawn (MapPoint 0) in the same group, in a dungeon
+    region. The tomb's floors (regions 0x8002..0x8007, Worldmap_JINSI)
+    are served only while SRO_QINSHI_TOMB opens the tomb, as its doors are.
+
+Every region must be one the loaded textdata names (textzonename) and the
+Alexandria overlay does not hide, so Alexandria's rows stay out unless its
+regions are loaded and SRO_ALEXANDRIA is on. An entrance without a served
+floor is dropped, and so is a floor without an entrance.
 
 INFERENCE: LevelMin / LevelMax are the table's level band (0 means no
 limit); the port refuses a use outside it. The shipped rows use 0/0,
-50/999, 70/999 and 95/999.
+50/999, 70/999 and 95/999. v1.150 has no dungeon map pages (its
+worldmap_mapinfo has no Dungeonmap section), so the client lists an
+entrance's floors when the entrance is clicked; the entrance takes the
+English name of the field region it stands in.
 
 ===========================================================================
 */
@@ -38,6 +51,7 @@ import (
 	"math"
 	"os"
 	"path/filepath"
+	"slices"
 	"sort"
 	"strconv"
 
@@ -63,26 +77,62 @@ const (
 	serviceOn       = 1
 	fieldWorldID    = 1
 	mapPointShown   = 1
+	mapPointHidden  = 0
 	noRegionGroup   = -1
 	zoneNameColumns = 9
 	zoneNameRegion  = 1
 	zoneNameEnglish = 8
+
+	// The Qin-Shi tomb's floor regions, B6 (0x8002) to B1 (0x8007):
+	// worldmap_instanceinfo Worldmap_JINSI, regions 2..7 of row 128.
+	tombFirstRegion uint16 = 0x8002
+	tombLastRegion  uint16 = 0x8007
+)
+
+/*
+================
+Kind
+
+What a served row is (see the file header).
+================
+*/
+type Kind uint8
+
+const (
+	KindField Kind = iota
+	KindEntrance
+	KindFloor
 )
 
 /*
 ================
 Point
 
-One served destination, by the table's own id.
+One served row, by the table's own id. Group ties an entrance to its
+floors; it is zero for a field point.
 ================
 */
 type Point struct {
 	ID       uint32
+	Kind     Kind
+	Group    uint32
 	Name     string
 	RegionID uint16
 	X, Y, Z  float64
 	LevelMin int64
 	LevelMax int64
+}
+
+/*
+================
+Options
+
+The world switches a row depends on.
+================
+*/
+type Options struct {
+	// QinShiTomb is SRO_QINSHI_TOMB (world/monster QinShiTombFromEnv).
+	QinShiTomb bool
 }
 
 /*
@@ -130,7 +180,7 @@ is a game root without the import (nil, nil); a present file must parse
 exactly.
 ================
 */
-func Load(textdataDir string) ([]Point, error) {
+func Load(textdataDir string, options Options) ([]Point, error) {
 	path := filepath.Join(textdataDir, File)
 	info, err := os.Stat(path)
 	if errors.Is(err, fs.ErrNotExist) {
@@ -159,7 +209,7 @@ func Load(textdataDir string) ([]Point, error) {
 	if err != nil {
 		return nil, err
 	}
-	return selectPoints(raw.Rows, zoneNames(textdataDir), hidden)
+	return selectPoints(raw.Rows, selection{zones: zoneNames(textdataDir), hidden: hidden, options: options})
 }
 
 /*
@@ -188,39 +238,50 @@ func zoneNames(textdataDir string) map[uint16]string {
 
 /*
 ================
+selection
+
+What selectPoints checks a row against.
+================
+*/
+type selection struct {
+	zones   map[uint16]string
+	hidden  *alexandria.Overlay
+	options Options
+}
+
+/*
+================
 selectPoints
 
 The rows the port serves (see the file header), sorted by id. A repeated
 id refuses the table.
 ================
 */
-func selectPoints(rows []importRow, zones map[uint16]string, hidden *alexandria.Overlay) ([]Point, error) {
+func selectPoints(rows []importRow, s selection) ([]Point, error) {
 	var points []Point
 	seen := map[int64]bool{}
+	entrances, floors := map[uint32]bool{}, map[uint32]bool{}
 	for _, row := range rows {
 		if row.ID < 1 || row.ID > math.MaxUint32 || seen[row.ID] {
 			return nil, fmt.Errorf("optional teleport: row id %d is not a new positive id", row.ID)
 		}
 		seen[row.ID] = true
-		if row.Service != serviceOn || row.WorldID != fieldWorldID || row.MapPoint != mapPointShown ||
-			row.RegionGroup != noRegionGroup || row.RegionID < 1 || row.RegionID > math.MaxUint16 {
+		point, ok := s.point(row)
+		if !ok {
 			continue
 		}
-		region := uint16(row.RegionID)
-		zone, known := zones[region]
-		if !known || simulation.IsDungeonRegion(region) || hidden.HidesRegion(region) || !inRegion(row) {
-			continue
+		switch point.Kind {
+		case KindEntrance:
+			entrances[point.Group] = true
+		case KindFloor:
+			floors[point.Group] = true
 		}
-		name := row.Name
-		if name == "" {
-			name = zone
-		}
-		if name == "" || len(name) > maxNameBytes {
-			continue
-		}
-		points = append(points, Point{ID: uint32(row.ID), Name: name, RegionID: region,
-			X: row.X, Y: row.Y, Z: row.Z, LevelMin: row.LevelMin, LevelMax: row.LevelMax})
+		points = append(points, point)
 	}
+	// An entrance needs a floor to list, a floor an entrance to be chosen at.
+	points = slices.DeleteFunc(points, func(p Point) bool {
+		return p.Kind != KindField && (!entrances[p.Group] || !floors[p.Group])
+	})
 	if len(points) > maxPoints {
 		return nil, fmt.Errorf("optional teleport: %d points, at most %d", len(points), maxPoints)
 	}
@@ -230,16 +291,88 @@ func selectPoints(rows []importRow, zones map[uint16]string, hidden *alexandria.
 
 /*
 ================
-inRegion
+selection.point
 
-Finite coordinates inside the region's local extent.
+The served form of one row, or false when the port does not serve it.
 ================
 */
-func inRegion(row importRow) bool {
+func (s selection) point(row importRow) (Point, bool) {
+	if row.Service != serviceOn || row.WorldID != fieldWorldID || !finite(row) {
+		return Point{}, false
+	}
+	region, ok := tableRegion(row.RegionID)
+	if !ok {
+		return Point{}, false
+	}
+	zone, known := s.zones[region]
+	if !known || s.hidden.HidesRegion(region) {
+		return Point{}, false
+	}
+	point := Point{ID: uint32(row.ID), Name: row.Name, RegionID: region,
+		X: row.X, Y: row.Y, Z: row.Z, LevelMin: row.LevelMin, LevelMax: row.LevelMax}
+	dungeon := simulation.IsDungeonRegion(region)
+	switch {
+	case row.MapPoint == mapPointShown && row.RegionGroup == noRegionGroup && !dungeon && inRegion(row):
+		point.Kind = KindField
+	case row.MapPoint == mapPointShown && row.RegionGroup > 0 && row.RegionGroup <= math.MaxUint32 && !dungeon && inRegion(row):
+		// The entrance row has no zone of its own ("xxx"): it takes its field's.
+		point.Kind, point.Group, point.Name = KindEntrance, uint32(row.RegionGroup), zone
+	case row.MapPoint == mapPointHidden && row.RegionGroup > 0 && row.RegionGroup <= math.MaxUint32 && dungeon:
+		if region >= tombFirstRegion && region <= tombLastRegion && !s.options.QinShiTomb {
+			return Point{}, false
+		}
+		point.Kind, point.Group = KindFloor, uint32(row.RegionGroup)
+	default:
+		return Point{}, false
+	}
+	if point.Name == "" {
+		point.Name = zone
+	}
+	if point.Name == "" || len(point.Name) > maxNameBytes {
+		return Point{}, false
+	}
+	return point, true
+}
+
+/*
+================
+tableRegion
+
+The table writes a dungeon region as a signed 16-bit value (-32767 is
+0x8001) and a field region as its unsigned id.
+================
+*/
+func tableRegion(value int64) (uint16, bool) {
+	switch {
+	case value >= math.MinInt16 && value < 0:
+		return uint16(int16(value)), true
+	case value > 0 && value <= math.MaxUint16:
+		return uint16(value), true
+	}
+	return 0, false
+}
+
+/*
+================
+finite
+================
+*/
+func finite(row importRow) bool {
 	for _, v := range [3]float64{row.X, row.Y, row.Z} {
 		if math.IsNaN(v) || math.IsInf(v, 0) {
 			return false
 		}
 	}
+	return true
+}
+
+/*
+================
+inRegion
+
+A field point inside its region's local extent.
+================
+*/
+func inRegion(row importRow) bool {
 	return row.X >= 0 && row.X < regionSize && row.Z >= 0 && row.Z < regionSize
 }

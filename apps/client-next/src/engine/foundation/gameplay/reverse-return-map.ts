@@ -24,12 +24,29 @@ const MAX_REVERSE_MAP_POINTS = 4096;
 const MAX_REVERSE_MAP_ID = 0xffffffff;
 // MAX_REVERSE_MAP_NAME bounds a point name (server maxReverseMapNameBytes).
 const MAX_REVERSE_MAP_NAME = 128;
+// MAX_REVERSE_MAP_FLOORS bounds an entrance's floor list (the VSRO table's
+// largest dungeon, the Qin-Shi tomb, has six floors).
+const MAX_REVERSE_MAP_FLOORS = 16;
+
+/*
+================
+ReverseMapFloor
+
+A dungeon floor an entrance lists, by its table id.
+================
+*/
+export interface ReverseMapFloor {
+	readonly id: number;
+	readonly name: string;
+}
 
 /*
 ================
 ReverseMapPoint
 
-One published destination. The map paints it from these coordinates.
+One published point. The map paints it from these coordinates. A dungeon
+entrance (an imported VSRO table only) lists its floors and is not a
+destination itself: a use names one of its floors.
 ================
 */
 export interface ReverseMapPoint {
@@ -39,6 +56,41 @@ export interface ReverseMapPoint {
 	readonly x: number;
 	readonly y: number;
 	readonly z: number;
+	readonly floors?: readonly ReverseMapFloor[];
+}
+
+/*
+================
+decodeReverseMapFloors
+
+A point's floors: absent is a field point.
+================
+*/
+function decodeReverseMapFloors( value: unknown ): readonly ReverseMapFloor[] | undefined {
+	if ( value === undefined ) return undefined;
+	if ( !Array.isArray( value ) || value.length < 1 || value.length > MAX_REVERSE_MAP_FLOORS ) {
+		throw Error( "Invalid reverse return map floors" );
+	}
+	return value.map( raw => {
+		const floor = raw as Partial<ReverseMapFloor> | null;
+		if (
+			!floor || typeof floor !== "object" || !Number.isInteger( floor.id ) || floor.id! < 1 ||
+			floor.id! > MAX_REVERSE_MAP_ID || typeof floor.name !== "string" || floor.name.length > MAX_REVERSE_MAP_NAME
+		) throw Error( "Invalid reverse return map floor" );
+		return { id: floor.id!, name: floor.name };
+	} );
+}
+
+/*
+================
+reverseMapDestination
+
+Whether a use may name this id: a field point or an entrance's floor,
+never the entrance itself.
+================
+*/
+export function reverseMapDestination( points: readonly ReverseMapPoint[], id: number ): boolean {
+	return points.some( point => point.floors ? point.floors.some( floor => floor.id === id ) : point.id === id );
 }
 
 /*
@@ -67,7 +119,16 @@ export function decodeReverseMapPoints( value: unknown ): readonly ReverseMapPoi
 			point.x! >= REGION_SIZE || point.z! < 0 || point.z! >= REGION_SIZE
 		) throw Error( "Invalid reverse return map point" );
 		previous = point.id!;
-		return { id: point.id!, name: point.name, regionId: point.regionId!, x: point.x!, y: point.y!, z: point.z! };
+		const floors = decodeReverseMapFloors( point.floors );
+		return {
+			id: point.id!,
+			name: point.name,
+			regionId: point.regionId!,
+			x: point.x!,
+			y: point.y!,
+			z: point.z!,
+			...(floors ? { floors } : {})
+		};
 	} );
 }
 

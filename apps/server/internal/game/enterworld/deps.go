@@ -64,6 +64,9 @@ type Deps struct {
 	// FastDenReturn publishes the port-only SRO_FAST_DEN_RETURN rule
 	// (action/denreturn.go); false is native.
 	FastDenReturn bool
+	// ReverseMapImported publishes that the port-only reverse return map
+	// table is the imported VSRO one (action/reversemap.go).
+	ReverseMapImported bool
 	// TradeTiers publishes the port-only SRO_TRADE_TIERS rule
 	// (action/tradetiers.go); false is native.
 	TradeTiers bool

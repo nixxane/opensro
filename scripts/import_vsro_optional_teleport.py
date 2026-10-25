@@ -18,7 +18,15 @@ pinned VSRO release, and writes every row, unfiltered, as JSON into
 extracted/VsroOptionalTeleport_extracted/ beside the v1.150 extraction.
 The server bundle build projects the file when it is present; a game root
 without it builds the native bundle unchanged. The server, not this tool,
-decides which rows it serves (outdoor map points of the loaded world).
+decides which rows it serves (world/optionalteleport).
+
+It also copies the map art the later client marks the points with, which
+v1.150 does not ship: interface/worldmap/map/xy_returnicon*.ddj (a 64x32
+sheet of two 32x32 frames, with focus and press states). They land under
+the same folder with their archive paths; the image converter and the
+reverse-return-markers asset family publish them when present. The
+map_return*.ddj bars beside them are not copied: without the v1.188 client
+their place on the map cannot be shown.
 
 Column layout (19 columns, the _RefOptionalTeleport table): Service, ID,
 ObjName128, ZoneName128, RegionID, PosX, PosY, PosZ, WorldID,
@@ -47,10 +55,17 @@ OUTPUT_FOLDER = "VsroOptionalTeleport_extracted"
 OUTPUT_NAME = "vsro-optional-teleport.json"
 TABLE_PATH = "server_dep/silkroad/textdata/refoptionalteleport.txt"
 NAMES_PATH = "server_dep/silkroad/textdata/textdata_object.txt"
+# The map art copied unchanged beside the table.
+MARKER_IMAGES = {
+	"interface/worldmap/map/xy_returnicon.ddj": "0da42e7f942080419fa2fca8dc9be14882dc5b2c3bf4a04e2d9d159dc58969eb",
+	"interface/worldmap/map/xy_returnicon_focus.ddj": "a283a44a1f3667df895d8152c07194ca801bd79a685589eed1454f82d8aab5c4",
+	"interface/worldmap/map/xy_returnicon_press.ddj": "c691830609c4e5b249265b2e7093c590186d45cda75a9ff7eb4463f1b2a714ea"
+}
 # The VSRO 1.188 Media.pk2 payloads this importer was checked against.
 PINNED = {
 	TABLE_PATH: "78191256af3c538a9ac5d53d8f732dc70c77d0490bb3bd01c37b96a32994cae8",
-	NAMES_PATH: "a4aa0280b466a4676daa8b13e14281f9302b4f00b1848abd1dd6ed2f5b4ed4b9"
+	NAMES_PATH: "a4aa0280b466a4676daa8b13e14281f9302b4f00b1848abd1dd6ed2f5b4ed4b9",
+	**MARKER_IMAGES
 }
 TABLE_COLUMNS = 19
 # textdata_object.txt: Service, CodeName128, then the languages; English is
@@ -200,6 +215,8 @@ def import_optional_teleport(media, output):
 	payloads = read_payloads(media, set(PINNED))
 	check_pins(payloads)
 	rows = parse_optional_teleport(payloads[TABLE_PATH], payloads[NAMES_PATH])
+	for name in MARKER_IMAGES:
+		write_atomically(safe_target(output, name), payloads[name])
 	document = {
 		"format": OUTPUT_FORMAT,
 		"source": {

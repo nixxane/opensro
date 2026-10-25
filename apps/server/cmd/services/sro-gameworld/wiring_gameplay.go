@@ -135,17 +135,19 @@ func newGameplayPlane(
 	}
 	// Port-only, not native: the reverse return scroll's map destinations.
 	if action.ReverseReturnMapFromEnv() {
-		imported, err := optionalteleport.Load(devPaths.TextdataDir)
+		imported, err := optionalteleport.Load(devPaths.TextdataDir,
+			optionalteleport.Options{QinShiTomb: monster.QinShiTombFromEnv()})
 		if err != nil {
 			return nil, fmt.Errorf("reverse return map: %w", err)
 		}
 		items.ConfigureReverseReturnMap(true, imported)
+		deps.ReverseMapImported = items.ReverseReturnMapImported()
 		source := "inferred"
-		if len(imported) > 0 {
+		if deps.ReverseMapImported {
 			source = "imported " + optionalteleport.File
 		}
-		log.Infof("reverse return: map destinations ON (%s), %d %s points", action.EnvReverseReturnMap,
-			len(items.ReverseReturnMapPoints()), source)
+		log.Infof("reverse return: map destinations ON (%s), %d %s points of %d rows", action.EnvReverseReturnMap,
+			len(items.ReverseReturnMapPoints()), source, len(imported))
 	}
 	// One clock for the bootstrap and the tick sweep, read through the runtime
 	// so a swapped clock reaches both; world entry hands re-raised pet-skill

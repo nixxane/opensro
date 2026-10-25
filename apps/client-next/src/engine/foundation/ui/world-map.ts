@@ -696,9 +696,21 @@ export function mapLabelVisible( box: UiRect, clip: UiRect ): boolean {
 const MAP_MARKER_SIZE = 16;
 // MAP_REGION_UNITS is a region's side in map units (1920 local / 10).
 const MAP_REGION_UNITS = 192;
-// REVERSE_MAP_MARKER marks a reverse return map point (port-only): the
-// shipped hunting-point sign.
+// REVERSE_MAP_MARKER marks an inferred reverse return map point
+// (port-only): the shipped hunting-point sign.
 export const REVERSE_MAP_MARKER = "/assets/images/Media_extracted/interface/worldmap/wmap_sign_huntingpoint.png";
+// REVERSE_MAP_IMPORTED_MARKER marks the imported VSRO table's points with
+// that client's own art (import_vsro_optional_teleport.py): a 64x32 sheet
+// of two 32x32 frames, plus a 32x32 focus image. INFERENCE: drawn like
+// v1.150's 32x32 xy_* world-map icons, the first frame, with the focus
+// image under the pointer; the second frame's use is not shown by any
+// client on hand.
+export const REVERSE_MAP_IMPORTED_MARKER =
+	"/assets/images/VsroOptionalTeleport_extracted/interface/worldmap/map/xy_returnicon.png";
+export const REVERSE_MAP_IMPORTED_MARKER_FOCUS =
+	"/assets/images/VsroOptionalTeleport_extracted/interface/worldmap/map/xy_returnicon_focus.png";
+export const REVERSE_MAP_IMPORTED_MARKER_SIZE = 32;
+export const REVERSE_MAP_IMPORTED_MARKER_UV = [ 0, 0, 0.5, 1 ] as const;
 
 /*
 ================
@@ -710,13 +722,14 @@ One projection owns the native markers and the reverse return map points
 */
 function worldMapMarkerRect(
 	frame: ReturnType<typeof worldMapFrame>,
-	point: { readonly regionId: number; readonly x: number; readonly z: number; }
+	point: { readonly regionId: number; readonly x: number; readonly z: number; },
+	size = MAP_MARKER_SIZE
 ): UiRect | null {
 	if ( isDungeonRegion( point.regionId ) ) return null;
 	const { left, right, top, bottom, width, height, ox, oy } = frame;
 	const x = ((sectorX( point.regionId ) * MAP_REGION_UNITS + point.x / 10 - left) / (right - left)) * width;
 	const y = ((top - (sectorY( point.regionId ) * MAP_REGION_UNITS + point.z / 10)) / (top - bottom)) * height;
-	return [ ox + x - MAP_MARKER_SIZE / 2, oy + y - MAP_MARKER_SIZE / 2, MAP_MARKER_SIZE, MAP_MARKER_SIZE ];
+	return [ ox + x - size / 2, oy + y - size / 2, size, size ];
 }
 
 /*
@@ -737,11 +750,13 @@ export function worldMapPointMarkers<
 		readonly center: Pose;
 		readonly points: readonly Point[];
 		readonly layout?: WorldMapLayout;
+		// The marker's side in screen pixels (default the native 16).
+		readonly size?: number;
 	}
 ): { readonly point: Point; readonly rect: UiRect; }[] {
 	const frame = worldMapFrame( view.page, view.clip, view.pan, view.center, view.layout );
 	return view.points.flatMap( point => {
-		const rect = worldMapMarkerRect( frame, point );
+		const rect = worldMapMarkerRect( frame, point, view.size );
 		return rect && mapLabelVisible( rect, view.clip ) ? [ { point, rect } ] : [];
 	} );
 }

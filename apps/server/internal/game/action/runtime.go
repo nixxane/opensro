@@ -207,9 +207,10 @@ type Runtime struct {
 	// reverseMapPoints is the reverse return scroll's map table, empty
 	// unless SRO_REVERSE_RETURN_MAP is on (ConfigureReverseReturnMap).
 	reverseMapPoints []enterworld.ReverseMapPoint
-	// reverseMapLevels holds an imported table's points by id, for their
-	// level bands; nil for the inferred table.
-	reverseMapLevels map[uint32]optionalteleport.Point
+	// reverseMapRows holds an imported table's destinations (field points
+	// and dungeon floors) by id, with their level bands; nil for the
+	// inferred table.
+	reverseMapRows map[uint32]optionalteleport.Point
 	// gatePulleys maps a gate pulley's RefObjID to its gate's event zone
 	// (ConfigurePortals, fortress_gates.go).
 	gatePulleys map[uint32]uint32

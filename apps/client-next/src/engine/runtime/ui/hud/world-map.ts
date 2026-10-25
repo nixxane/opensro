@@ -29,6 +29,10 @@ import {
 	worldMapPages,
 	worldMapPresentation,
 	worldMapPointMarkers,
+	REVERSE_MAP_IMPORTED_MARKER,
+	REVERSE_MAP_IMPORTED_MARKER_FOCUS,
+	REVERSE_MAP_IMPORTED_MARKER_SIZE,
+	REVERSE_MAP_IMPORTED_MARKER_UV,
 	REVERSE_MAP_MARKER,
 	type MapMarker,
 	mapLabelVisible
@@ -604,6 +608,10 @@ export function createWorldMapHud( options: MapHudOptions ) {
 			// Port-only: the reverse return map points while the map holds a scroll.
 			if ( mapOpen && pose && reverseScrollHud.mapping() ) {
 				const clip: UiRect = [ mapLeft + 6, mapTop + 34, mapWidth - 12, mapHeight - 40 ];
+				// The imported VSRO table wears that client's marker; the inferred
+				// one keeps the shipped hunting-point sign.
+				const imported = game?.reverseMapImported === true;
+				if ( imported ) paths.push( REVERSE_MAP_IMPORTED_MARKER_FOCUS );
 				for (
 					const { point, rect } of worldMapPointMarkers( {
 						page: mapPage,
@@ -611,13 +619,19 @@ export function createWorldMapHud( options: MapHudOptions ) {
 						pan: mapPan,
 						center: mapCenter ?? pose,
 						points: game?.reverseMapPoints ?? [],
-						layout: mapLayout
+						layout: mapLayout,
+						...(imported ? { size: REVERSE_MAP_IMPORTED_MARKER_SIZE } : {})
 					} )
 				) {
+					const focused = imported && hover === "reverse-map-point:" + point.id;
 					mapImages.push( {
 						rect,
-						texture: REVERSE_MAP_MARKER,
-						uv: [ 0, 0, 1, 1 ],
+						texture: !imported ?
+							REVERSE_MAP_MARKER :
+							focused ?
+							REVERSE_MAP_IMPORTED_MARKER_FOCUS :
+							REVERSE_MAP_IMPORTED_MARKER,
+						uv: imported && !focused ? [ ...REVERSE_MAP_IMPORTED_MARKER_UV ] : [ 0, 0, 1, 1 ],
 						color: [ 1, 1, 1, 1 ],
 						clip
 					} );

@@ -84,7 +84,7 @@ An imported table (optionalteleport.Load) replaces the inferred one.
 ================
 */
 func (rt *Runtime) ConfigureReverseReturnMap(enabled bool, imported []optionalteleport.Point) {
-	rt.reverseMapPoints, rt.reverseMapLevels = nil, nil
+	rt.reverseMapPoints, rt.reverseMapRows = nil, nil
 	if !enabled {
 		return
 	}
@@ -157,13 +157,26 @@ func (rt *Runtime) ConfigureReverseReturnMap(enabled bool, imported []optionalte
 ================
 useImportedReverseMap
 
-The imported points under their own ids, ascending, with their level
-bands.
+The imported rows under their own ids. The public table holds the field
+points and the dungeon entrances, each entrance listing its floors; the
+destinations are the field points and the floors, with their level bands.
+An entrance is never a destination, so an old client that sends its id is
+refused and spends nothing.
 ================
 */
 func (rt *Runtime) useImportedReverseMap(imported []optionalteleport.Point) {
-	rt.reverseMapLevels = make(map[uint32]optionalteleport.Point, len(imported))
+	floors := map[uint32][]enterworld.ReverseMapFloor{}
 	for _, point := range imported {
+		if point.Kind == optionalteleport.KindFloor {
+			floors[point.Group] = append(floors[point.Group], enterworld.ReverseMapFloor{ID: point.ID, Name: point.Name})
+		}
+	}
+	rt.reverseMapRows = make(map[uint32]optionalteleport.Point, len(imported))
+	for _, point := range imported {
+		if point.Kind == optionalteleport.KindFloor {
+			rt.reverseMapRows[point.ID] = point
+			continue
+		}
 		public := enterworld.ReverseMapPoint{ID: point.ID, Name: point.Name, RegionID: point.RegionID,
 			X: point.X, Y: point.Y, Z: point.Z}
 		n := len(rt.reverseMapPoints)
@@ -173,9 +186,25 @@ func (rt *Runtime) useImportedReverseMap(imported []optionalteleport.Point) {
 		if n == maxReverseMapPoints {
 			break
 		}
+		if point.Kind == optionalteleport.KindEntrance {
+			public.Floors = floors[point.Group]
+		} else {
+			rt.reverseMapRows[point.ID] = point
+		}
 		rt.reverseMapPoints = append(rt.reverseMapPoints, public)
-		rt.reverseMapLevels[point.ID] = point
 	}
+}
+
+/*
+================
+ReverseReturnMapImported
+
+True when the public table is the imported VSRO one, whose marker art the
+client draws (the entry bootstrap's reverseMapImported).
+================
+*/
+func (rt *Runtime) ReverseReturnMapImported() bool {
+	return rt.reverseMapRows != nil
 }
 
 /*
@@ -212,17 +241,27 @@ func (rt *Runtime) ReverseReturnMapPoints() []enterworld.ReverseMapPoint {
 ================
 reverseMapDestination
 
-The field point an id names, or false for an unknown id or a disabled
-option. Ids ascend (inferred: 1..n; imported: the table's own).
+The point an id names, or false for an unknown id, an entrance or a
+disabled option. Every point, a dungeon floor too, is in the field world
+(world 1). Inferred ids run 1..n in the public table.
 ================
 */
 func (rt *Runtime) reverseMapDestination(id uint32) (travelPoint, bool) {
+	destination := travelPoint{world: instance.ID(domain.DefaultWorldInstance)}
+	if rt.reverseMapRows != nil {
+		row, ok := rt.reverseMapRows[id]
+		if !ok {
+			return travelPoint{}, false
+		}
+		destination.spawn.RegionID = row.RegionID
+		destination.spawn.X, destination.spawn.Y, destination.spawn.Z = row.X, row.Y, row.Z
+		return destination, true
+	}
 	index := sort.Search(len(rt.reverseMapPoints), func(i int) bool { return rt.reverseMapPoints[i].ID >= id })
 	if id == 0 || index == len(rt.reverseMapPoints) || rt.reverseMapPoints[index].ID != id {
 		return travelPoint{}, false
 	}
 	point := rt.reverseMapPoints[index]
-	destination := travelPoint{world: instance.ID(domain.DefaultWorldInstance)}
 	destination.spawn.RegionID = point.RegionID
 	destination.spawn.X, destination.spawn.Y, destination.spawn.Z = point.X, point.Y, point.Z
 	return destination, true
@@ -237,7 +276,7 @@ inferred point has none.
 ================
 */
 func (rt *Runtime) reverseMapAdmitsLevel(id uint32, c *enterworld.Character) bool {
-	point, banded := rt.reverseMapLevels[id]
+	point, banded := rt.reverseMapRows[id]
 	if !banded {
 		return true
 	}

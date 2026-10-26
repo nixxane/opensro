@@ -103,11 +103,7 @@ import type { BugReportControl } from "@/engine/contracts/bug-report";
 import { equipmentDropSlot } from "@/engine/foundation/gameplay/equipment-drop";
 import { itemEquipmentOverlay, equipmentWarningUv } from "@/engine/foundation/ui/item-equipment-overlay";
 import { itemCountQuads } from "@/engine/foundation/ui/item-count";
-import {
-	flagWarTimerDigitTexture,
-	flagWarTimerReading,
-	flagWarTimerUrgentTint
-} from "@/engine/foundation/ui/flagwar-timer-plate";
+import { flagWarTimerDigitTexture, flagWarTimerReading } from "@/engine/foundation/ui/flagwar-timer-plate";
 import { returnScrollBar } from "@/engine/foundation/ui/return-scroll";
 import { nameColorRgba } from "@/engine/foundation/gameplay/name-color";
 import { containsPoint, topmostControlAt } from "@/engine/foundation/ui/hit-test";
@@ -572,6 +568,14 @@ import {
 } from "@/engine/foundation/ui/input-options";
 import { sightMode, type SightMode } from "@/engine/foundation/rendering/camera-options";
 import {
+	GRAPHIC_OPTION_CHARACTERS,
+	GRAPHIC_OPTION_GROUND,
+	GRAPHIC_OPTION_LEVEL_OF_DETAIL,
+	GRAPHIC_OPTION_MAP_OBJECTS,
+	GRAPHIC_OPTION_SKY,
+	GRAPHIC_OPTION_WIRE_FRAME
+} from "@/engine/foundation/rendering/graphic-options";
+import {
 	initialAudioOptions,
 	defaultAudioOptions,
 	audioOptions,
@@ -636,7 +640,7 @@ import { systemMessageLayout } from "@/engine/foundation/ui/system-message-layou
 import { comboBoxChrome } from "@/engine/foundation/ui/combo-box";
 import { verticalSpinChrome } from "@/engine/foundation/ui/vertical-spin";
 import { stretchRing } from "@/engine/foundation/ui/stretch-ring";
-import { chatLayout } from "@/engine/foundation/ui/chat-layout";
+import { chatLayout, sunDropChatColor } from "@/engine/foundation/ui/chat-layout";
 import { worldMapFrame, worldMapImagePaths, worldMapQuads } from "@/engine/foundation/ui/world-map";
 import {
 	experienceReadout,
@@ -712,11 +716,14 @@ import {
 	commandFloat,
 	commandInteger,
 	DEBUG_COMMAND_CLEAR,
+	DEBUG_COMMAND_COLON,
+	DEBUG_COMMAND_COLON_OFF,
 	DEBUG_COMMAND_CURSOR,
 	DEBUG_COMMAND_DAY,
 	DEBUG_COMMAND_DEBUG,
 	DEBUG_COMMAND_FREE_CAMERA,
 	DEBUG_COMMAND_GET_POSITION,
+	DEBUG_COMMAND_HIDE_ME,
 	DEBUG_COMMAND_ITEM,
 	DEBUG_COMMAND_MESSAGE_CLEAR,
 	DEBUG_COMMAND_NIGHT,
@@ -725,13 +732,22 @@ import {
 	DEBUG_COMMAND_POSITION,
 	DEBUG_COMMAND_POWER,
 	DEBUG_COMMAND_RAIN,
+	DEBUG_COMMAND_SHOW_ME,
 	DEBUG_COMMAND_SNOW,
 	DEBUG_COMMAND_TIME_MINUS,
 	DEBUG_COMMAND_TIME_OFF,
 	DEBUG_COMMAND_TIME_ON,
 	DEBUG_COMMAND_TIME_PLUS,
 	DEBUG_COMMAND_TIME_SET,
+	DEBUG_COMMAND_UI_OFF,
+	DEBUG_COMMAND_UI_ON,
 	DEBUG_COMMAND_ZOOM,
+	DEBUG_COMMAND_WIRE_FRAME,
+	DEBUG_COMMAND_GROUND,
+	DEBUG_COMMAND_SKY,
+	DEBUG_COMMAND_MAP_OBJECTS,
+	DEBUG_COMMAND_CHARACTERS,
+	DEBUG_COMMAND_LEVEL_OF_DETAIL,
 	DEBUG_COMMAND_SET_FIELD_OF_VIEW,
 	debugCommand,
 	debugFieldOfView,
@@ -951,9 +967,11 @@ rather than as another createUi parameter.
 */
 export interface UiExtensions {
 	bugReport?: BugReportControl | null;
+	setRenderMode?: ( mode: number, enabled: boolean ) => void;
 	setWorldFieldOfView?: ( degrees: number ) => void;
 	setCameraZoomRail?: ( capped: boolean ) => void;
 	setFreeCamera?: ( free: boolean ) => void;
+	setCameraCollision?: ( collision: boolean ) => void;
 	setCursorVisible?: ( visible: boolean ) => void;
 	saveExperimental?: ( value: ExperimentalOptions ) => void;
 	saveWindowPositions?: ( value: WindowPositions ) => void;
@@ -994,13 +1012,31 @@ export function createUi(
 	// The interface timer's debug state (690C40 ids 100-109): the sampler
 	// reads it through the handle's debugClockSeed.
 	let debugClock: DebugClock = createDebugClock();
-	// The camera family's debug bytes (690C40 ids 110/114/135): the
+	// The camera family's debug bytes (690C40 ids 110-135): the
 	// interface's zoom rail (+0x3CF, standing from its constructor), its
-	// free-camera byte (+0x3CE) and the cursor manager's visibility
+	// free-camera byte (+0x3CE), its camera-apply byte (+0x3CC, also
+	// standing from its constructor) and the cursor manager's visibility
 	// (+0x20). Each owner applies its own through the extensions.
 	let debugZoomRail = true;
 	let debugFreeCamera = false;
 	let debugCursorVisible = true;
+	// The render family's SWorld graphic options (690C40 ids 150-155):
+	// SWorld_Construct seeds wireframe clear and the five others standing,
+	// each command negates one, and the renderer applies the result. The
+	// copies here are the interface's negation state, as with the zoom
+	// rail; the applied state lives with the renderer.
+	let debugWireFrame = false;
+	let debugGround = true;
+	let debugSky = true;
+	let debugMapObjects = true;
+	let debugCharacters = true;
+	let debugLevelOfDetail = true;
+	// The mission window's visible flag (CIFWnd +0x6D, written through
+	// CIFWnd_SetVisibleFlag 9FCD70 by 690C40 cases 115/116): while it is
+	// down the frame carries only the console's own quads and controls -
+	// the console belongs to the interface, not the hidden window tree,
+	// exactly as the native stays able to read /uion.
+	let debugUiVisible = true;
 	let video = defaultVideoOptions(), videoDraft = video, videoScroll = 0, videoCombo = VIDEO_COMBO_CLOSED;
 	let bindings = defaultInputOptions(), bindingDraft = bindings, bindingSelected = -1, bindingScroll = 0;
 	let sight: SightMode = 0, sightDraft: SightMode = 0;
@@ -2040,6 +2076,7 @@ export function createUi(
 		}
 		if ( next === "COS inventory" ) {
 			petTrainingAskedRef = 0;
+			petStateAsked = { ref: 0, asks: 0, atMs: 0 };
 			cosSlot = -1;
 			cosPage = 0;
 			cosPlayerPage = 0;
@@ -2651,8 +2688,10 @@ export function createUi(
 	slot (the sampler's state, not this window's); the time rows drive the
 	local debug clock the sampler reads through debugClockSeed. The camera
 	rows flip this window's debug bytes and hand each to its owner; the
-	camera-waypoint and render-toggle families are not ported yet and leave
-	the line as typed.
+	shown byte (112/113) rides the gameplay lane to the entity owner, and
+	the mission window's visible flag (115/116) is this window's own. The
+	camera-waypoint rows (130-134) and ids 111/117-119 are not ported yet
+	and leave the line as typed.
 	================
 	*/
 	function runDebugCommand( command: DebugCommand ) {
@@ -2754,6 +2793,17 @@ export function createUi(
 				debugZoomRail = !debugZoomRail;
 				extensions.setCameraZoomRail?.( debugZoomRail );
 				break;
+			case DEBUG_COMMAND_SHOW_ME:
+				// Case 0x12 writes the local player's shown byte
+				// (CICPlayer +0xB8) to 1. The native prints nothing.
+				sendGameplay( { kind: "debug-local-visible", visible: true } );
+				break;
+			case DEBUG_COMMAND_HIDE_ME:
+				// Case 0x13 writes the shown byte to 0: the local
+				// presentation (body and name board) is skipped. The
+				// native prints nothing.
+				sendGameplay( { kind: "debug-local-visible", visible: false } );
+				break;
 			case DEBUG_COMMAND_FREE_CAMERA:
 				// Case 0x14 flips +0x3CE and reports the new state: while it
 				// stands the camera keeps its last eye and target (68FAD0,
@@ -2762,11 +2812,74 @@ export function createUi(
 				extensions.setFreeCamera?.( debugFreeCamera );
 				appendConsoleLine( debugFreeCamera ? "Free Camera On" : "Free Camera Off" );
 				break;
+			case DEBUG_COMMAND_UI_OFF:
+				// Case 0x15 writes the mission window's visible flag
+				// (CIFWnd +0x6D) to 0 through 9FCD70: the HUD tree
+				// hides and the hovered window is released; the console
+				// stays, so /uion can be typed. The native prints nothing.
+				debugUiVisible = false;
+				break;
+			case DEBUG_COMMAND_UI_ON:
+				// Case 0x16 writes the flag back to 1. The native
+				// prints nothing.
+				debugUiVisible = true;
+				break;
+			case DEBUG_COMMAND_COLON:
+				// Case 0x76 writes +0x3CC back to 1: the clamp casts
+				// the eye-to-target segment again (68FAD0). The native
+				// prints nothing.
+				extensions.setCameraCollision?.( true );
+				break;
+			case DEBUG_COMMAND_COLON_OFF:
+				// Case 0x77 writes +0x3CC to 0: the clamp takes its
+				// no-hit arm and the camera keeps the requested
+				// distance; the follow still tracks. Prints nothing.
+				extensions.setCameraCollision?.( false );
+				break;
 			case DEBUG_COMMAND_CURSOR:
 				// Case 0x1E: SetVisible(![cursor+0x20]) - the pointer shows
 				// or goes away (A15A70), silently.
 				debugCursorVisible = !debugCursorVisible;
 				extensions.setCursorVisible?.( debugCursorVisible );
+				break;
+			case DEBUG_COMMAND_WIRE_FRAME:
+				// 150 (691686) negates graphic option 0x12: while it stands
+				// SWorld_Render fills wireframe (8B9C28). The port's device
+				// has no line topology, so the byte is carried unapplied.
+				// The native prints nothing.
+				debugWireFrame = !debugWireFrame;
+				extensions.setRenderMode?.( GRAPHIC_OPTION_WIRE_FRAME, debugWireFrame );
+				break;
+			case DEBUG_COMMAND_GROUND:
+				// 151 (6916BF) negates option 0x13: cleared, the terrain
+				// and ground-decal pass returns whole (8ABFDE).
+				debugGround = !debugGround;
+				extensions.setRenderMode?.( GRAPHIC_OPTION_GROUND, debugGround );
+				break;
+			case DEBUG_COMMAND_SKY:
+				// 152 (6916F8) negates option 0x14: cleared, the sky pass
+				// in CWorld_RenderScenePasses is skipped (8B32F9, 8B3489).
+				debugSky = !debugSky;
+				extensions.setRenderMode?.( GRAPHIC_OPTION_SKY, debugSky );
+				break;
+			case DEBUG_COMMAND_MAP_OBJECTS:
+				// 153 (691731) negates option 0x15: cleared, the model
+				// pass returns whole (SWorld_RenderPostModelPass_8AA750).
+				debugMapObjects = !debugMapObjects;
+				extensions.setRenderMode?.( GRAPHIC_OPTION_MAP_OBJECTS, debugMapObjects );
+				break;
+			case DEBUG_COMMAND_CHARACTERS:
+				// 154 (69176A) negates option 0x16: its proven readers are
+				// the character shadow and dungeon passes (8B130B,
+				// 8B1B4E); the port clears every character draw with it.
+				debugCharacters = !debugCharacters;
+				extensions.setRenderMode?.( GRAPHIC_OPTION_CHARACTERS, debugCharacters );
+				break;
+			case DEBUG_COMMAND_LEVEL_OF_DETAIL:
+				// 155 (6917A3) negates option 0x17: cleared, every cell
+				// takes LOD 0 in place of its distance band (8B7F1D).
+				debugLevelOfDetail = !debugLevelOfDetail;
+				extensions.setRenderMode?.( GRAPHIC_OPTION_LEVEL_OF_DETAIL, debugLevelOfDetail );
 				break;
 			case DEBUG_COMMAND_SET_FIELD_OF_VIEW: {
 				const degrees = debugFieldOfView( command.args );
@@ -8466,6 +8579,9 @@ export function createUi(
 			const sessionPhase = next.session?.phase;
 			if ( sessionPhase !== "world" && sessionPhase !== "disconnected" && sessionPhase !== "reconnecting" ) {
 				mallNotice = "pending";
+				// A restarted server may now provide pet stats after earlier requests were refused.
+				petStateAsked = { ref: 0, asks: 0, atMs: 0 };
+				petTrainingAskedRef = 0;
 			} else if ( sessionPhase === "world" && !next.travel && mallNotice === "pending" && hud.data() ) {
 				mallNotice = hud.data()!.mallNotify.open ? "open" : "closed";
 				dirty = true;
@@ -9647,7 +9763,8 @@ export function createUi(
 						data.cosReferences.get( record.refObjId ),
 						game?.petTraining?.gid === record.gid ? game.petTraining : undefined,
 						next.entities.find( e => e.gid === record.gid )?.petResolve,
-						next.simulationTimeMs ?? 0
+						next.simulationTimeMs ?? 0,
+						record.level
 					);
 					const nativeRect = cosStatusRect( w, i, cls, cosStatusDesktopTop() );
 					const r: UiRect = compact ?
@@ -11454,17 +11571,18 @@ export function createUi(
 					const plate = hudData.windows.iftimerwnd;
 					if ( plate ) {
 						// CIFTimerWnd (ginterface GDR_TIMER_WND, iftimerwnd statics):
-						// the flag war timer's digits, red under a minute left.
+						// the flag war timer's digits. The native red tint under a
+						// minute is mode-2 only (0x5184DD); the flag war arms
+						// mode 1, so the digits stay plain at every remainder.
 						const origin = authoredRect( hudData.root.GDR_TIMER_WND!, 0, 0 ),
-							reading = flagWarTimerReading( game.flagWar.timerEndsAt - quickslotTime ),
-							tint = reading.urgent ? flagWarTimerUrgentTint : white;
+							reading = flagWarTimerReading( game.flagWar.timerEndsAt - quickslotTime );
 						authoredImage(
 							plate.GDR_TIMER_MIN_0_STA!,
 							origin[0],
 							origin[1],
 							flagWarTimerDigitTexture( reading.minTens ),
 							1,
-							tint
+							white
 						);
 						authoredImage(
 							plate.GDR_TIMER_MIN_1_STA!,
@@ -11472,16 +11590,16 @@ export function createUi(
 							origin[1],
 							flagWarTimerDigitTexture( reading.minOnes ),
 							1,
-							tint
+							white
 						);
-						authoredImage( plate.GDR_TIMER_CENTER_STA!, origin[0], origin[1], undefined, 1, tint );
+						authoredImage( plate.GDR_TIMER_CENTER_STA!, origin[0], origin[1], undefined, 1, white );
 						authoredImage(
 							plate.GDR_TIMER_SEC_0_STA!,
 							origin[0],
 							origin[1],
 							flagWarTimerDigitTexture( reading.secTens ),
 							1,
-							tint
+							white
 						);
 						authoredImage(
 							plate.GDR_TIMER_SEC_1_STA!,
@@ -11489,7 +11607,7 @@ export function createUi(
 							origin[1],
 							flagWarTimerDigitTexture( reading.secOnes ),
 							1,
-							tint
+							white
 						);
 					}
 				}
@@ -11772,7 +11890,8 @@ export function createUi(
 								hudData.cosReferences.get( target.refObjId ),
 								game?.petTraining?.gid === target.gid ? game.petTraining : undefined,
 								target.petResolve,
-								next.simulationTimeMs ?? 0
+								next.simulationTimeMs ?? 0,
+								record?.level
 							)?.maxHp :
 							undefined);
 					// The local character, selected from its portrait, wears the
@@ -17362,7 +17481,8 @@ export function createUi(
 							hudData.cosReferences.get( record.refObjId ),
 							publishedTraining,
 							next.entities.find( e => e.gid === record.gid )?.petResolve,
-							next.simulationTimeMs ?? 0
+							next.simulationTimeMs ?? 0,
+							record.level
 						);
 						const node = ( id: number ) => Object.values( page ).find( n => n.id === id );
 						const texts: [number, string][] = [
@@ -17539,6 +17659,7 @@ export function createUi(
 								if ( icon && item ) {
 									image( r, icon );
 									equipmentOverlay( item, r );
+									itemEffects( "pet-gear:" + i, item, r );
 								}
 								quads.push(
 									...text.quads( gear.name, [ r[0] - 12, r[1] + 38, 56, 12 ], full, white, {
@@ -20440,6 +20561,7 @@ export function createUi(
 				if ( game && hud.data() ) {
 					for ( const entity of next.entities ) {
 						if (
+							entity.debugHidden ||
 							hiddenSilkCos( entity, options.hideSilkCos ) ||
 							next.blindHeld && (blindableCharacter( entity, game?.localGid ) ||
 									experimental.state().saved.vHidesCompanions &&
@@ -20585,7 +20707,11 @@ export function createUi(
 							height = text.boardHeight();
 						// 86E8FD -> 7827A0 sets backing ARGB 40000000 after construction.
 						// 7832C0 draws a one-pixel margin; 86E8EB sets tint 1.
-						const color: UiQuad["color"] = entity.groundItem.tint === 1 ?
+						// Port-only (#1640): an admitted Seal of Sun drop's plate
+						// is gold (the Sun notice colour), over the native tint.
+						const color: UiQuad["color"] = entity.groundItem.sunMarker ?
+							sunDropChatColor() :
+							entity.groundItem.tint === 1 ?
 							[ 114 / 255, 191 / 255, 1, 1 ] :
 							white;
 						if ( name && height ) {
@@ -20631,7 +20757,7 @@ export function createUi(
 					const hovered = entity.gid === next.hoveredEntity, selected = entity.gid === game?.target;
 					// One decision for the name and every overhead icon: an icon never
 					// shows without its name (name-visibility.ts header).
-					const named = !hiddenSilkCos( entity, options.hideSilkCos ) &&
+					const named = !entity.debugHidden && !hiddenSilkCos( entity, options.hideSilkCos ) &&
 						overheadBoardVisible(
 							boardAt( entity ),
 							local,
@@ -25721,6 +25847,9 @@ export function createUi(
 				}
 			}
 			mapHud.details( { worldVisible, panel, pressed, hover, full, paths, quads, text, resources, rect } );
+			const preConsoleQuads = quads.length,
+				preConsoleControls = controls.length,
+				preConsoleBlocks = blocks.length;
 			if ( worldVisible && consolePhase !== 0 && game?.eligibility?.gm ) {
 				// The catalogue list grows the native 600x112 panel downward.
 				// It is port-only, so it uses a solid panel behind its two
@@ -25856,6 +25985,14 @@ export function createUi(
 					rect: [ px, inputY, 600 - px, 16 ],
 					maxLength: 255
 				} );
+			}
+			if ( !debugUiVisible ) {
+				// /uioff (690C40 case 115): the frame keeps only what the
+				// console block above contributed; everything built
+				// before it is the hidden window tree's.
+				quads.splice( 0, preConsoleQuads );
+				controls.splice( 0, preConsoleControls );
+				blocks.splice( 0, preConsoleBlocks );
 			}
 			probe?.detailEnd( "ui-assembly" );
 			probe?.detailBegin( "ui-finalize" );

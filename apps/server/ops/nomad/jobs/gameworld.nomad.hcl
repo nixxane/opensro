@@ -195,6 +195,14 @@ variable "beta_silk" {
   default = "50"
 }
 
+# beta_silk_active_only credits the beta silk hour only while the character
+# has acted within ten minutes (port-only, not native). "off" is the shipped
+# rule: world-ready time earns.
+variable "beta_silk_active_only" {
+  type    = string
+  default = "off"
+}
+
 # maintenance_gate_path is the maintenance release gate (ops/release
 # deploy.py): while the file exists, EnterWorld tokens go only to the
 # accounts it lists. Empty disables the gate.
@@ -351,6 +359,22 @@ variable "teleport_grace" {
   default = "off"
 }
 
+# premium_upgrade lets a strictly higher-grade premium ticket replace the
+# running lower one (owner decision 2026-10-25, #1624). Port-only, not
+# native; "off" refuses a second ticket while one runs.
+variable "premium_upgrade" {
+  type    = string
+  default = "off"
+}
+
+# kill_stats counts kills and EXP per online hour by level band for the
+# staff console (#1639, #1604 P10). Port-only, not native; "off" counts
+# nothing and the economy route answers 404.
+variable "kill_stats" {
+  type    = string
+  default = "off"
+}
+
 # trade_tiers rates a caravan's stars by its cargo's gold value (5M, 10M,
 # 20M, 35M, 50M) and raises trade profit between Jangan and Donwhang +50%,
 # Hotan +100%, Samarkand +200%, Constantinople +300% (port-only, not
@@ -448,6 +472,14 @@ variable "announce_sox_drop" {
   default = "on"
 }
 
+# seal_board counts sealed drops for the site's weekly seal board, by job
+# alias with Star, Moon and Sun apart (port-only, not native; owner
+# decision 2026-10-25, #1604 P9). "off" is native: nothing counts.
+variable "seal_board" {
+  type    = string
+  default = "off"
+}
+
 variable "announce_plus" {
   type    = string
   default = "on"
@@ -543,6 +575,12 @@ variable "hunting_guide" {
   default = ""
 }
 
+# Optional GM-only target references; off leaves the native roster unchanged.
+variable "gm_training_dummy" {
+  type    = string
+  default = "off"
+}
+
 # gm_setspeed admits a GM's /SETSPEED (port-only, not native; owner decision
 # 2026-10-12). Anything but "on" refuses it, as v1.150 has no such command.
 variable "gm_setspeed" {
@@ -612,7 +650,7 @@ variable "beta_growth" {
 # (owner, 2026-10-24). Empty keeps every level at the pace.
 variable "beta_growth_bands" {
   type    = string
-  default = "1-59:pace,60-89:20,90-110:10"
+  default = "1-59:pace,60-69:1639,70-79:1215,80-89:748,90-94:532,95-99:431,100-104:351,105-110:289"
 }
 
 variable "beta_skill_exp_rate" {
@@ -1009,6 +1047,7 @@ job "sro-gameworld-__SHARD_ID__" {
         SRO_PHARAOH_TOMB                   = var.pharaoh_tomb
         SRO_PHARAOH_TOMB_GEAR_RATE         = var.pharaoh_tomb_gear_rate
         SRO_BETA_SILK                           = var.beta_silk
+        SRO_BETA_SILK_ACTIVE_ONLY               = var.beta_silk_active_only
         SRO_MAINTENANCE_GATE_PATH               = var.maintenance_gate_path
         SRO_PET_PACING                          = var.pet_pacing
         SRO_STORAGE_AUTO_STACK                  = var.storage_auto_stack
@@ -1024,6 +1063,8 @@ job "sro-gameworld-__SHARD_ID__" {
         SRO_MOST_WANTED_STREAK_NOTICE           = var.most_wanted_streak_notice
         SRO_TRADE_TIERS                         = var.trade_tiers
         SRO_TELEPORT_GRACE                      = var.teleport_grace
+        SRO_PREMIUM_UPGRADE                     = var.premium_upgrade
+        SRO_KILL_STATS                          = var.kill_stats
         SRO_TRADE_ROUTE_DONWHANG_PERCENT        = var.trade_route_donwhang_percent
         SRO_TRADE_ROUTE_HOTAN_PERCENT           = var.trade_route_hotan_percent
         SRO_TRADE_ROUTE_SAMARKAND_PERCENT       = var.trade_route_samarkand_percent
@@ -1036,6 +1077,7 @@ job "sro-gameworld-__SHARD_ID__" {
         SRO_MALL_TRANSPORT_SPEED                = var.mall_transport_speed
         SRO_MALL_RIDE_SPEED                     = var.mall_ride_speed
         SRO_ANNOUNCE_SOX_DROP                   = var.announce_sox_drop
+        SRO_SEAL_BOARD                          = var.seal_board
         SRO_ANNOUNCE_PLUS                       = var.announce_plus
         SRO_ANNOUNCE_JOB_KILL                   = var.announce_job_kill
         SRO_JOB_KILL_NOTICE_REPEAT              = var.job_kill_notice_repeat
@@ -1057,6 +1099,7 @@ job "sro-gameworld-__SHARD_ID__" {
         SRO_TRADE_JOB_HUNTER_PERCENT_CAP        = var.trade_job_hunter_percent_cap
         SRO_REVERSE_RETURN_MAP                  = var.reverse_return_map
         SRO_GM_SETSPEED                         = var.gm_setspeed
+        SRO_GM_TRAINING_DUMMY                   = var.gm_training_dummy
         SRO_ALCHEMY_RATES                       = var.alchemy_rates
         SRO_ALCHEMY_MAX_PLUS                    = var.alchemy_max_plus
         SRO_TEAM_DEATH_REVIVE                   = var.team_death_revive

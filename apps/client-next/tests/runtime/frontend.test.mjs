@@ -721,6 +721,86 @@ test("entry admission retains the dock through connecting and rejection, and lea
 	assert.equal( frontend.start(), true, "returned dock must support ordinary re-entry" );
 	frontend.dispose();
 });
+/*
+================
+sessionDrivenEntry
+
+A launcher sends enter-world to the session without pressing Start. The
+bound world must still take the frontend to its world loading, from the dock
+and from the title when no frame saw character select; left behind, the
+runtime never reset the world for it and the loading screen waited forever.
+================
+*/
+test("a world entry the dock did not start still leaves the dock for world loading", () => {
+	for ( const viaDock of [ true, false ] ) {
+		let serial = 0, sceneId = "";
+		const jobs = new Map();
+		const manifest = {
+			camera: [ {
+				timeSeconds: 0,
+				sectorX: 81,
+				sectorY: 105,
+				position: { x: 0, y: 0, z: 0 },
+				rotation: { x: 0, y: 0, z: 0 },
+				mode: 30
+			} ],
+			cameraControllerTargetTimeSeconds: 0,
+			regionBundlePublicPath: "/assets/fixture-world.json"
+		};
+		const assets = {
+			available: () => 8,
+			request: ( url, size, kind ) => {
+				const id = ++serial;
+				jobs.set(
+					id,
+					kind === "frontend-world" ?
+						{ kind: "world", world: { sceneId: "fixture" } } :
+						{ kind: "bytes", buffer: new TextEncoder().encode( JSON.stringify( manifest ) ).buffer }
+				);
+				return id;
+			},
+			take: id => {
+				const result = jobs.get( id );
+				jobs.delete( id );
+				return result;
+			},
+			cancel: id => jobs.delete( id )
+		};
+		const renderer = {
+			cancelWorldUpdate() {},
+			settleWorld: () => false,
+			setWorld() {},
+			adoptWorld( world ) {
+				sceneId = world.sceneId;
+			},
+			setWorldTexture() {},
+			neededWorldTextures: () => [],
+			worldStats: () => ({ sceneId, pendingGroups: 0, pendingTextures: 0 }),
+			setWorldCamera() {},
+			characterStats: () => ({ actors: 1 })
+		};
+		const frontend = createFrontend( assets, renderer, "http://fixture.invalid" );
+		let now = 0, session = { phase: "signed-out", revision: 1, characters: [] };
+		const step = () => frontend.step( session, now += 100 );
+		for ( let i = 0; i < 20 && frontend.snapshot().phase !== "intro"; i++ ) step();
+		session = {
+			phase: "character-select",
+			revision: 2,
+			characters: [ { id: 1, name: "fixture", deletePending: false, visualLoadout: { heightScale: 1 } } ]
+		};
+		if ( viaDock ) {
+			for ( let i = 0; i < 30 && frontend.snapshot().phase !== "dock"; i++ ) step();
+			assert.equal( frontend.snapshot().phase, "dock" );
+		}
+		session = { ...session, phase: "entering-world", revision: 3 };
+		assert.notEqual( step().phase, "loading-world", "entry is not bound yet" );
+		session = { ...session, phase: "world", revision: 4 };
+		assert.equal( step().phase, "loading-world" );
+		frontend.worldReady();
+		assert.equal( step().phase, "world" );
+		frontend.dispose();
+	}
+});
 const { frontendCameraView } = await load( "src/engine/foundation/rendering/frontend-camera.ts" );
 const { viewProjection } = await load( "src/engine/foundation/rendering/world-math.ts" );
 const { screenPoint } = await load( "src/engine/foundation/rendering/screen-point.ts" );

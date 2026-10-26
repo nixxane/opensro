@@ -207,7 +207,7 @@ func selectPoints(rows []importRow, zones map[uint16]string, hidden *alexandria.
 		}
 		region := uint16(row.RegionID)
 		zone, known := zones[region]
-		if !known || simulation.IsDungeonRegion(region) || hidden.HidesRegion(region) || !inRegion(row) {
+		if !known || simulation.PlaneKindOf(region) == simulation.PlaneCave || hidden.HidesRegion(region) || !inRegion(row) {
 			continue
 		}
 		name := row.Name

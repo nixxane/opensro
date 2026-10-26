@@ -7,8 +7,9 @@ wiring_gameplay.go is at the source-size limit, so the port-only
 SRO_REVERSE_RETURN_MAP wiring lives here. Off is native: the scroll offers
 the last recall and last death points only. On, the action runtime serves
 the imported VSRO optional-teleport table when the game data carries it
-(world/optionalteleport), else its inferred table, and world entry tells
-the client which one it is (reverseMapImported).
+(world/optionalteleport), else its inferred table. The client receives
+whichever points the server published; it is not told which source
+built them.
 
 ===========================================================================
 */

@@ -20,7 +20,7 @@ The server bundle build projects the file when it is present; a game root
 without it builds the native bundle unchanged. The server, not this tool,
 decides which rows it serves (outdoor map points of the loaded world).
 
-Column layout (19 columns, the _RefOptionalTeleport table): Service, ID,
+Column layout (19 columns, one destination per row): Service, ID,
 ObjName128, ZoneName128, RegionID, PosX, PosY, PosZ, WorldID,
 RegionIDGroup, MapPoint, LevelMin, LevelMax, then three Param/Desc pairs.
 
